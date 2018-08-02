@@ -1,0 +1,16 @@
+.git
+.eggs
+eggs
+lib
+lib64
+parts
+sdist
+var
+masterdata
+messages
+logs
+resources/models/*
+resources/*
+*.pyc
+*.swp
+.DS_Store
