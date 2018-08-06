@@ -536,9 +536,7 @@ if __name__ == "__main__":
 
     # In[36]:
 
-    letters = ['A','B','C','D','E','F','G','H','I','J','K','L','M',
-            'N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-            '1','2','3','4','5','6','7','8','9','0']
+    letters = list(vocab_to_int.keys())[:len(vocab_to_int.keys()) - 3]
 
     # Check to ensure noise_maker is making mistakes correctly.
     threshold = 0.9
