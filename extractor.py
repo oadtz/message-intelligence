@@ -45,15 +45,15 @@ with open(os.path.join(base_path, 'ulds'), 'w') as f:
 '''
 
 with open(os.path.join(base_path, 'flights'), 'w') as f:
-    for fullFlightNbr in db.flights.find({}).distinct('fullFlightNbr'):
-        if len(fullFlightNbr) > 3:
-            f.write(fullFlightNbr + '\n')
+    for flight in db.flights.find({}):
+        if len(flight['fullFlightNbr']) > 3:
+            f.write(flight['fullFlightNbr'] + '\n')
     f.close()
 
     
 
 db = mongo.planb_prod_stats
-with open(os.path.join(base_path, 'flights_changes'), 'w') as f:
+with open(os.path.join(base_path, 'flights_changes.csv'), 'w') as f:
     f.write('error,correction\n')
     for log in db.debug_msgQuality.find({ 'chg_flightNbr': { '$ne': None } }):
         f.write(log['carrierCode'] + log['flightNbr'] + ',' + log['carrierCode'] + log['chg_flightNbr']  + '\n')

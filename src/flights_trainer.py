@@ -42,38 +42,42 @@ threshold = 0.95
 keep_probability = 0.75
 
 
-def noise_maker(uld, threshold):
+def noise_maker(flight, threshold):
     '''Relocate, remove, or add characters to create spelling mistakes'''
     
-    noisy_uld = []
+    noisy_flight = []
     i = 0
-    while i < len(uld):
+    while i < len(flight):
         random = np.random.uniform(0,1,1)
         # Most characters will be correct since the threshold value is high
         if random < threshold:
-            noisy_uld.append(uld[i])
+            noisy_flight.append(flight[i])
         else:
             new_random = np.random.uniform(0,1,1)
             # ~33% chance characters will swap locations
             if new_random > 0.67:
-                if i == (len(uld) - 1):
+                if i == (len(flight) - 1):
                     # If last character in sentence, it will not be typed
                     continue
                 else:
                     # if any other character, swap order with following character
-                    noisy_uld.append(uld[i+1])
-                    noisy_uld.append(uld[i])
+                    noisy_flight.append(flight[i+1])
+                    noisy_flight.append(flight[i])
                     i += 1
             # ~33% chance an extra lower case letter will be added to the sentence
             elif new_random < 0.33:
                 random_letter = np.random.choice(letters, 1)[0]
-                noisy_uld.append(vocab_to_int[random_letter])
-                noisy_uld.append(uld[i])
+                noisy_flight.append(vocab_to_int[random_letter])
+                noisy_flight.append(flight[i])
             # ~33% chance a character will not be typed
             else:
                 pass     
         i += 1
-    return noisy_uld
+
+    if noisy_flight not in flights:
+        return noisy_flight
+        
+    return noise_maker(flight, threshold)
 
 
 
@@ -160,7 +164,7 @@ def training_decoding_layer(dec_embed_input, targets_length, dec_cell, initial_s
                                                            initial_state,
                                                            output_layer) 
 
-        training_logits, _ ,_ = tf.contrib.seq2seq.dynamic_decode(training_decoder,
+        training_logits,_ ,_ = tf.contrib.seq2seq.dynamic_decode(training_decoder,
                                                                 output_time_major=False,
                                                                 impute_finished=True,
                                                                 maximum_iterations=max_target_length)
@@ -183,7 +187,7 @@ def inference_decoding_layer(embeddings, start_token, end_token, dec_cell, initi
                                                             initial_state,
                                                             output_layer)
 
-        inference_logits, _ , _ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
+        inference_logits ,_ ,_ = tf.contrib.seq2seq.dynamic_decode(inference_decoder,
                                                                 output_time_major=False,
                                                                 impute_finished=True,
                                                                 maximum_iterations=max_target_length)
@@ -269,42 +273,42 @@ def seq2seq_model(inputs, targets, keep_prob, inputs_length, targets_length, max
     return training_logits, inference_logits
 
 
-def pad_uld_batch(uld_batch):
+def pad_flight_batch(flight_batch):
     """Pad sentences with <PAD> so that each sentence of a batch has the same length"""
-    max_uld = max([len(uld) for uld in uld_batch])
-    return [uld + [vocab_to_int['<PAD>']] * (max_uld - len(uld)) for uld in uld_batch]
+    max_flight = max([len(flight) for flight in flight_batch])
+    return [flight + [vocab_to_int['<PAD>']] * (max_flight - len(flight)) for flight in flight_batch]
 
 
-def get_batches(ulds, batch_size, threshold):
+def get_batches(flights, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
     
-    for batch_i in range(0, len(ulds)//batch_size):
+    for batch_i in range(0, len(flights)//batch_size):
         start_i = batch_i * batch_size
-        ulds_batch = ulds[start_i:start_i + batch_size]
+        flights_batch = flights[start_i:start_i + batch_size]
         
-        ulds_batch_noisy = []
-        for uld in ulds_batch:
-            ulds_batch_noisy.append(noise_maker(uld, threshold))
+        flights_batch_noisy = []
+        for flight in flights_batch:
+            flights_batch_noisy.append(noise_maker(flight, threshold))
             
-        ulds_batch_eos = []
-        for uld in ulds_batch:
-            uld.append(vocab_to_int['<EOS>'])
-            ulds_batch_eos.append(uld)
+        flights_batch_eos = []
+        for flight in flights_batch:
+            flight.append(vocab_to_int['<EOS>'])
+            flights_batch_eos.append(flight)
             
-        pad_ulds_batch = np.array(pad_uld_batch(ulds_batch_eos))
-        pad_ulds_noisy_batch = np.array(pad_uld_batch(ulds_batch_noisy))
+        pad_flights_batch = np.array(pad_flight_batch(flights_batch_eos))
+        pad_flights_noisy_batch = np.array(pad_flight_batch(flights_batch_noisy))
         
         # Need the lengths for the _lengths parameters
-        pad_ulds_lengths = []
-        for uld in pad_ulds_batch:
-            pad_ulds_lengths.append(len(uld))
+        pad_flights_lengths = []
+        for flight in pad_flights_batch:
+            pad_flights_lengths.append(len(flight))
         
-        pad_ulds_noisy_lengths = []
-        for uld in pad_ulds_noisy_batch:
-            pad_ulds_noisy_lengths.append(len(uld))
+        pad_flights_noisy_lengths = []
+        for flight in pad_flights_noisy_batch:
+            pad_flights_noisy_lengths.append(len(flight))
         
-        yield pad_ulds_noisy_batch, pad_ulds_batch, pad_ulds_noisy_lengths, pad_ulds_lengths
+        yield pad_flights_noisy_batch, pad_flights_batch, pad_flights_noisy_lengths, pad_flights_lengths
 
 
 # *Note: This set of values achieved the best results.*
@@ -386,7 +390,7 @@ def train(model, epochs, log_string):
         stop_early = 0 
         stop = 3 # If the batch_loss_testing does not decrease in 3 consecutive checks, stop training
         per_epoch = 3 # Test the model 3 times per epoch
-        testing_check = (len(training)//batch_size//per_epoch)-1
+        testing_check = (len(training_sorted)//batch_size//per_epoch)-1
 
         print()
         print("Training Model: {}".format(log_string))
@@ -399,7 +403,7 @@ def train(model, epochs, log_string):
             batch_time = 0
             
             for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(
-                    get_batches(training, batch_size, threshold)):
+                    get_batches(training_sorted, batch_size, threshold)):
                 start_time = time.time()
 
                 summary, loss, _ = sess.run([model.merged,
@@ -426,7 +430,7 @@ def train(model, epochs, log_string):
                           .format(epoch_i,
                                   epochs, 
                                   batch_i, 
-                                  len(training) // batch_size, 
+                                  len(training_sorted) // batch_size, 
                                   batch_loss / display_step, 
                                   batch_time))
                     batch_loss = 0
@@ -437,7 +441,7 @@ def train(model, epochs, log_string):
                     batch_loss_testing = 0
                     batch_time_testing = 0
                     for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(
-                            get_batches(testing, batch_size, threshold)):
+                            get_batches(testing_sorted, batch_size, threshold)):
                         start_time_testing = time.time()
                         summary, loss = sess.run([model.merged,
                                                   model.cost], 
@@ -466,7 +470,7 @@ def train(model, epochs, log_string):
                     if batch_loss_testing <= min(testing_loss_summary):
                         print('New Record!') 
                         stop_early = 0
-                        checkpoint = "./resources/models/{}.ckpt".format(log_string)
+                        checkpoint = "./resources/models/flight_spell.ckpt"
                         saver = tf.train.Saver()
                         saver.save(sess, checkpoint)
 
@@ -484,20 +488,20 @@ def train(model, epochs, log_string):
 # In[ ]:
 
 if __name__ == "__main__":
-    ulds = []
+    flights = []
     with open(os.path.join(data_path, 'flights')) as f:
-        ulds = f.read().splitlines()
+        flights = f.read().splitlines()
 
-    for i in range(len(ulds)):
-        ulds[i] = str(ulds[i]).strip().upper()
+    for i in range(len(flights)):
+        flights[i] = str(flights[i]).strip().upper()
 
-    print("There are {} ULDs.".format(len(ulds)))
+    print("There are {} Flights.".format(len(flights)))
 
     # Create a dictionary to convert the vocabulary (characters) to integers
     vocab_to_int = {}
     count = 0
-    for uld in ulds:
-        for character in uld:
+    for flight in flights:
+        for character in flight:
             if character not in vocab_to_int:
                 vocab_to_int[character] = count
                 count += 1
@@ -507,7 +511,7 @@ if __name__ == "__main__":
     for code in codes:
         vocab_to_int[code] = count
         count += 1
-    with open('./resources/vocab_to_int', 'w') as f:
+    with open('./resources/flights_to_int.json', 'w') as f:
         json.dump(vocab_to_int, f)
         f.close()
 
@@ -519,31 +523,51 @@ if __name__ == "__main__":
     print(sorted(vocab_to_int))
 
     # Convert ULDs to integers
-    int_ulds = []
+    int_flights = []
 
-    for uld in ulds:
-        int_uld = []
-        for character in uld:
-            int_uld.append(vocab_to_int[character])
-        int_ulds.append(int_uld)
+    for flight in flights:
+        int_flight = []
+        for character in flight:
+            int_flight.append(vocab_to_int[character])
+        int_flights.append(int_flight)
 
     # Split the data into training and testing sentences
-    training, testing = train_test_split(int_ulds, test_size = 0.15, random_state = 2)
-
-    print("Number of training Flights:", len(training))
-    print("Number of testing Flights:", len(testing))
+    training, testing = train_test_split(int_flights, test_size = 0.15, random_state = 2)
 
 
-    # In[36]:
+    # Sort the flihgt no by length to reduce padding, which will allow the model to train faster
+    training_sorted = []
+    testing_sorted = []
+
+    for i in range(4, 12):
+        for flight in training:
+            if len(flight) == i:
+                training_sorted.append(flight)
+        for flight in testing:
+            if len(flight) == i:
+                testing_sorted.append(flight)
+
+    print("Number of training Flights:", len(training_sorted))
+    print("Number of testing Flights:", len(testing_sorted))
+
+
+    # In[24]:
+
+    # Check to ensure the sentences have been selected and sorted correctly
+    for i in range(5):
+        print(training_sorted[i], len(training_sorted[i]))
+
 
     letters = list(vocab_to_int.keys())[:len(vocab_to_int.keys()) - 3]
 
     # Check to ensure noise_maker is making mistakes correctly.
     threshold = 0.9
-    for uld in training[:5]:
-        print(uld)
-        print(noise_maker(uld, threshold))
+    '''
+    for flight in training[:5]:
+        print(flight)
+        print(noise_maker(flight, threshold))
         print()
+    '''
 
     # Train the model with the desired tuning parameters
     with tf.device('/device:GPU:0'):
