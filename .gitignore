@@ -9,8 +9,6 @@ var
 masterdata
 messages
 logs
-resources/models/*
-resources/*
 *.pyc
 *.swp
 .DS_Store
