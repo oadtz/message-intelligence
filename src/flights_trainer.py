@@ -290,7 +290,7 @@ def get_batches(flights, batch_size, threshold):
         flights_batch_noisy = []
         for flight in flights_batch:
             flights_batch_noisy.append(noise_maker(flight, threshold))
-            
+
         flights_batch_eos = []
         for flight in flights_batch:
             flight.append(vocab_to_int['<EOS>'])
@@ -307,7 +307,8 @@ def get_batches(flights, batch_size, threshold):
         pad_flights_noisy_lengths = []
         for flight in pad_flights_noisy_batch:
             pad_flights_noisy_lengths.append(len(flight))
-        
+
+
         yield pad_flights_noisy_batch, pad_flights_batch, pad_flights_noisy_lengths, pad_flights_lengths
 
 
@@ -514,8 +515,6 @@ if __name__ == "__main__":
     with open('./resources/flights_to_int.json', 'w') as f:
         json.dump(vocab_to_int, f)
         f.close()
-
-    # In[14]:
 
     # Check the size of vocabulary and all of the values
     vocab_size = len(vocab_to_int)

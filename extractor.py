@@ -42,7 +42,6 @@ with open(os.path.join(base_path, 'ulds'), 'w') as f:
         if str(uld['uldCode']).strip() != '':
             f.write(uld['uldCode'] + '\n')
     f.close()
-'''
 
 with open(os.path.join(base_path, 'flights'), 'w') as f:
     for flight in db.flights.find({}):
@@ -57,4 +56,20 @@ with open(os.path.join(base_path, 'flights_changes.csv'), 'w') as f:
     f.write('error,correction\n')
     for log in db.debug_msgQuality.find({ 'chg_flightNbr': { '$ne': None } }):
         f.write(log['carrierCode'] + log['flightNbr'] + ',' + log['carrierCode'] + log['chg_flightNbr']  + '\n')
+    f.close()
+
+'''
+
+
+
+with open(os.path.join(base_path, 'flights'), 'w') as f:
+    flights = []
+    for flight in db.flights.find({}):
+        if len(flight['fullFlightNbr']) > 3:
+            flights.append(flight['carrierCode'] + ' ' + str(flight['flightNbr']))
+
+    #flights = set(flights)
+    for flight in flights:
+        f.write(flight + '\n')
+    
     f.close()
