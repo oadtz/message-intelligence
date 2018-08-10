@@ -17,10 +17,13 @@ def detect_spell(text):
     text = text_to_ints(text.upper())
     input_text = "".join([int_to_vocab[i] for i in text if i not in pad])
 
-    #checkpoint = "./resources/models/flight_spell.ckpt"
-    frozen_graph = './resources/models/flight_spell.pb'
+    checkpoint = "./resources/models/flight_spell.ckpt"
+
 
     model = trainer.build_graph(trainer.keep_probability, trainer.rnn_size, trainer.num_layers, trainer.batch_size, trainer.learning_rate, trainer.embedding_size, trainer.direction, vocab_to_int) 
+
+    '''
+    frozen_graph = './resources/models/flight_spell.pb'
 
     with tf.gfile.GFile(frozen_graph, "rb") as f:
         restored_graph_def = tf.GraphDef()
@@ -31,23 +34,25 @@ def detect_spell(text):
             restored_graph_def,
             name=''
         )
-
-    with tf.Session(graph=graph) as sess:
+    '''
+    
+    #with tf.Session(graph=graph) as sess:
+    with tf.Session() as sess:
         # Load saved model
-        #saver = tf.train.Saver()
-        #saver.restore(sess, checkpoint)
-        inputs = graph.get_tensor_by_name("inputs/inputs")
-        inputs_length = graph.get_tensor_by_name("inputs_length")
-        targets_length = graph.get_tensor_by_name("targets_length")
-        keep_prob = graph.get_tensor_by_name("keep_prob")
+        saver = tf.train.Saver()
+        saver.restore(sess, checkpoint)
+        #inputs = graph.get_tensor_by_name("inputs/inputs")
+        #inputs_length = graph.get_tensor_by_name("inputs_length")
+        #targets_length = graph.get_tensor_by_name("targets_length")
+        #keep_prob = graph.get_tensor_by_name("keep_prob")
 
-        
+
 
         #Multiply by batch_size to match the model's input parameters
-        answer_logits = sess.run(model.predictions, feed_dict={inputs: [text]*trainer.batch_size, 
-                                                    inputs_length: [len(text)]*trainer.batch_size,
-                                                    targets_length: [len(text)+1], 
-                                                    keep_prob: [0.80]})
+        answer_logits = sess.run(model.predictions, feed_dict={model.inputs: [text]*trainer.batch_size, 
+                                                    model.inputs_length: [len(text)]*trainer.batch_size,
+                                                    model.targets_length: [len(text)+1], 
+                                                    model.keep_prob: [0.80]})
         answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in answer_logits]
 
     print('\nText')
@@ -71,6 +76,6 @@ if __name__ == "__main__":
     with open('./masterdata/flights', 'r') as f:
         flights = f.read().splitlines()
     # Create your own sentence or use one from the dataset
-    texts = ['C8 0234', 'XT 853AD', 'S 0547', 'SV 0547', 'AC 6271T']
+    texts = ['C8 0234', 'XT 853AD', 'S 0547', 'SK 0547', 'AC 6271T']
     for text in texts:
         detect_spell(text)
