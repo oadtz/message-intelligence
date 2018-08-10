@@ -52,7 +52,7 @@ def detect_spell(text):
         answer_logits = sess.run(model.predictions, feed_dict={model.inputs: [text]*trainer.batch_size, 
                                                     model.inputs_length: [len(text)]*trainer.batch_size,
                                                     model.targets_length: [len(text)+1], 
-                                                    model.keep_prob: [0.80]})
+                                                    model.keep_prob: [0.90]})
         answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in answer_logits]
 
     print('\nText')
