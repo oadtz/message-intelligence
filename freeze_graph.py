@@ -6,6 +6,8 @@ graph = tf.get_default_graph()
 sess = tf.Session()
 saver.restore(sess, "./resources/models/flight_spell.ckpt")
 
+
+'''
 print(len([op.name for op in graph.get_operations()]))
 
 output_graph_def = tf.graph_util.convert_variables_to_constants(
@@ -154,12 +156,9 @@ output_graph_def = tf.graph_util.convert_variables_to_constants(
 output_graph="./resources/models/flight_spell.pb"
 with tf.gfile.GFile(output_graph, "wb") as f:
     f.write(output_graph_def.SerializeToString())
+'''
 
-dir_name = "./resources/models/flight_spell/"
-if os.path.isdir(dir_name):
-    shutil.rmtree(dir_name)
-os.makedirs(dir_name)
-
+# Freezing graph to use with Tensorflow Serving
 inputs = graph.get_tensor_by_name("inputs/inputs:0")
 inputs_length = graph.get_tensor_by_name("inputs_length:0")
 targets_length = graph.get_tensor_by_name("targets_length:0")
@@ -180,6 +179,11 @@ signature_definition = tf.saved_model.signature_def_utils.build_signature_def(
     outputs={'outputs': model_output},
     method_name= tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
 
+
+dir_name = "./resources/models/flight_spell/"
+if os.path.isdir(dir_name):
+    shutil.rmtree(dir_name)
+os.makedirs(dir_name)
 
 builder = tf.saved_model.builder.SavedModelBuilder('./resources/models/flight_spell/1/')
 builder.add_meta_graph_and_variables(sess, [tf.saved_model.tag_constants.SERVING], signature_def_map={

@@ -22,40 +22,20 @@ def detect_spell(text):
 
     model = trainer.build_graph(trainer.keep_probability, trainer.rnn_size, trainer.num_layers, trainer.batch_size, trainer.learning_rate, trainer.embedding_size, trainer.direction, vocab_to_int) 
 
-    frozen_graph = './resources/models/flight_spell.pb'
-
-    with tf.gfile.GFile(frozen_graph, "rb") as f:
-        restored_graph_def = tf.GraphDef()
-        restored_graph_def.ParseFromString(f.read())
-
-    with tf.Graph().as_default() as graph:
-        tf.import_graph_def(
-            restored_graph_def,
-            name=''
-        )
-    
-    with tf.Session(graph=graph) as sess:
-    #with tf.Session() as sess:
+    with tf.Session() as sess:
         # Load saved model
-        #saver = tf.train.Saver()
-        #saver.restore(sess, checkpoint)
-        inputs = graph.get_tensor_by_name("inputs/inputs:0")
-        inputs_length = graph.get_tensor_by_name("inputs_length:0")
-        targets_length = graph.get_tensor_by_name("targets_length:0")
-        keep_prob = graph.get_tensor_by_name("keep_prob:0")
-
-        predictions = graph.get_tensor_by_name("predictions/predictions:0")
-
-        #Multiply by batch_size to match the model's input parameters
-        answer_logits = sess.run(predictions, feed_dict={inputs: [text]*trainer.batch_size, 
-                                                    inputs_length: [len(text)]*trainer.batch_size,
-                                                    targets_length: [len(text)+1], 
-                                                    keep_prob: [0.90]})
+        saver = tf.train.Saver()
+        saver.restore(sess, checkpoint)
+        # Multiply by batch_size to match the model's input parameters
+        answer_logits = sess.run(model.predictions, feed_dict={model.inputs: [text]*trainer.batch_size, 
+                                                    model.inputs_length: [len(text)]*trainer.batch_size,
+                                                    model.targets_length: [len(text)+1], 
+                                                    model.keep_prob: [0.90]})
         answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in answer_logits]
 
     print('\nText')
     print('  Input Words: {} -> {}'.format(input_text.replace(' ', ''), ",".join(set([text.replace(' ', '') for text in answer_texts]))))
-    print('  inputs:    [{}]'.format(",".join([str(i) for i in text])))
+    print('  inputs:    [{}]'.format(",".join([str(i) for i in [text]*trainer.batch_size])))
     print('  inputs_length:    [{}]'.format(",".join([str(i) for i in [len(text)]*trainer.batch_size])))
     print('  targets_length:    [{}]'.format(",".join([str(i) for i in [len(text)+1]])))
 
