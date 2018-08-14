@@ -384,11 +384,11 @@ def train(model, epochs, log_string):
         if tf.train.checkpoint_exists("./resources/models/flight_spell.ckpt"):
             print('Checkpoint exists')
             #saver = tf.train.import_meta_graph('./resources/models/flight_spell.ckpt.meta', clear_devices=True)
-            #saver.restore(sess, "./resources/models/flight_spell.ckpt")
+            saver = tf.train.Saver()
+            saver.restore(sess, "./resources/models/flight_spell.ckpt")
         else:
             print('Checkpoint does not exist')
-
-        sess.run(tf.global_variables_initializer())
+            sess.run(tf.global_variables_initializer())
 
         # Used to determine when to stop the training early
         testing_loss_summary = []
