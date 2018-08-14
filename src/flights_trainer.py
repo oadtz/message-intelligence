@@ -18,7 +18,7 @@
 import pandas as pd
 import numpy as np
 import tensorflow as tf
-import os
+import os, shutil
 from os import listdir
 from os.path import isfile, join
 from collections import namedtuple
@@ -38,8 +38,8 @@ rnn_size = 512
 embedding_size = 128
 learning_rate = 0.0005
 direction = 2
-threshold = 0.95
-keep_probability = 0.75
+threshold = 1.0
+keep_probability = 1.0
 
 
 def noise_maker(flight, threshold):
@@ -377,8 +377,17 @@ def build_graph(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embe
 # ## Training the Model
 def train(model, epochs, log_string):
     '''Train the RNN'''
-    
+
+
     with tf.Session() as sess:
+    
+        if tf.train.checkpoint_exists("./resources/models/flight_spell.ckpt"):
+            print('Checkpoint exists')
+            #saver = tf.train.import_meta_graph('./resources/models/flight_spell.ckpt.meta', clear_devices=True)
+            #saver.restore(sess, "./resources/models/flight_spell.ckpt")
+        else:
+            print('Checkpoint does not exist')
+
         sess.run(tf.global_variables_initializer())
 
         # Used to determine when to stop the training early
@@ -485,6 +494,44 @@ def train(model, epochs, log_string):
                 print("Stopping Training.")
                 break
 
+        freeze_graph(sess)
+
+
+def freeze_graph(sess):
+    graph = tf.get_default_graph()
+    # Freezing graph to use with Tensorflow Serving
+    inputs = graph.get_tensor_by_name("inputs/inputs:0")
+    inputs_length = graph.get_tensor_by_name("inputs_length:0")
+    targets_length = graph.get_tensor_by_name("targets_length:0")
+    keep_prob = graph.get_tensor_by_name("keep_prob:0")
+
+    predictions = graph.get_tensor_by_name("predictions/predictions:0")
+
+    model_input = {
+        'inputs': tf.saved_model.utils.build_tensor_info(inputs),
+        'inputs_length': tf.saved_model.utils.build_tensor_info(inputs_length),
+        'targets_length': tf.saved_model.utils.build_tensor_info(targets_length),
+        'keep_prob': tf.saved_model.utils.build_tensor_info(keep_prob)
+    }
+    model_output = tf.saved_model.utils.build_tensor_info(predictions)
+
+    signature_definition = tf.saved_model.signature_def_utils.build_signature_def(
+        inputs=model_input,
+        outputs={'outputs': model_output},
+        method_name= tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
+
+
+    dir_name = "./resources/models/flight_spell/"
+    if os.path.isdir(dir_name):
+        shutil.rmtree(dir_name)
+    os.makedirs(dir_name)
+
+    builder = tf.saved_model.builder.SavedModelBuilder('./resources/models/flight_spell/1/')
+    builder.add_meta_graph_and_variables(sess, [tf.saved_model.tag_constants.SERVING], signature_def_map={
+            tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+                signature_definition
+        })
+    builder.save()
 
 # In[ ]:
 
@@ -570,9 +617,9 @@ if __name__ == "__main__":
 
     # Train the model with the desired tuning parameters
     with tf.device('/device:GPU:0'):
-        for keep_probability in [0.75]:
+        for keep_probability in [1.0]:
             for num_layers in [2]:
-                for threshold in [0.95]:
+                for threshold in [1.0]:
                     log_string = 'kp={},nl={},th={}'.format(keep_probability,
                                                             num_layers,
                                                             threshold) 
