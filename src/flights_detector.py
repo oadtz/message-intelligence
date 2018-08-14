@@ -54,8 +54,10 @@ def detect_spell(text):
         answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in answer_logits]
 
     print('\nText')
-    #print('  Word Ids:    {} -> {}'.format([i for i in text], [i for i in answer_logits if i not in pad]))
     print('  Input Words: {} -> {}'.format(input_text.replace(' ', ''), ",".join(set([text.replace(' ', '') for text in answer_texts]))))
+    print('  inputs:    [{}]'.format(",".join([str(i) for i in text])))
+    print('  inputs_length:    [{}]'.format(",".join([str(i) for i in [len(text)]*trainer.batch_size])))
+    print('  targets_length:    [{}]'.format(",".join([str(i) for i in [len(text)+1]])))
 
 
 if __name__ == "__main__":
