@@ -78,7 +78,7 @@ def main():
     inputs_length = [len(text)]*trainer.batch_size
     targets_length =[len(text)+1]
     
-    request.inputs['inputs'].CopyFrom(make_tensor_proto(inputs, shape=[len(text) * trainer.batch_size], dtype=tf.int32))
+    request.inputs['inputs'].CopyFrom(make_tensor_proto(inputs, shape=[len(text), trainer.batch_size], dtype=tf.int32))
     request.inputs['inputs_length'].CopyFrom(make_tensor_proto(inputs_length, shape=[trainer.batch_size]))
     request.inputs['targets_length'].CopyFrom(make_tensor_proto(targets_length, shape=[len(text) + 1]))
     request.inputs['keep_prob'].CopyFrom(make_tensor_proto(0.95, shape=[1]))
