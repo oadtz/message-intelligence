@@ -40,7 +40,7 @@ def parse_args():
 
     #host, port = args.server.split(':')
     
-    print('text={}'.format(args.text))
+    print('Text = {}'.format(args.text))
     return args.server, args.text
 
 def text_to_ints(text):
@@ -51,6 +51,14 @@ def text_to_ints(text):
 
     return text
 
+def output_format(output):
+
+    x = output.tensor_shape.dim[0].size
+    y = output.tensor_shape.dim[1].size
+
+    output = np.unique(np.reshape(output.int_val, (x, y)), axis=0)
+
+    return output
 
 def main():
     # parse command line arguments
@@ -78,18 +86,23 @@ def main():
     targets_length =[len(text)+1]
     
     request.inputs['inputs'].CopyFrom(make_tensor_proto(inputs, shape=[trainer.batch_size, len(text)], dtype=tf.int32))
-    print('inputs:    [{}]'.format(",".join([str(i) for i in inputs])))
+    #print('inputs:    [{}]'.format(",".join([str(i) for i in inputs])))
     request.inputs['inputs_length'].CopyFrom(make_tensor_proto(inputs_length, shape=[trainer.batch_size], dtype=tf.int32))
     #print('inputs_length:    [{}]'.format(",".join([str(i) for i in inputs_length)))
     request.inputs['targets_length'].CopyFrom(make_tensor_proto(targets_length, shape=[len(text) + 1], dtype=tf.int32))
     #print('targets_length:    [{}]'.format(",".join([str(i) for i in targets_length])))
-    request.inputs['keep_prob'].CopyFrom(make_tensor_proto(1.0, shape=[1], dtype=tf.float32))
+    request.inputs['keep_prob'].CopyFrom(make_tensor_proto(0.95, shape=[1], dtype=tf.float32))
 
     result = stub.Predict(request, 60.0)  # 60 secs timeout
+
+    result = output_format(result.outputs['outputs'])
+
+    print ('Output = ')
+    for text in result:
+        print('\t' + "".join([int_to_vocab[i] for i in text if i not in pad]))
     #result = tf.make_ndarray(result)
-    print(result.outputs['outputs'].int_val)
-    answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in result.outputs['outputs'].int_val]
-    print(answer_texts)
+    #answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in list(result.outputs['outputs'].int_val)]
+    #print(answer_texts)
 
     end = time.time()
     time_diff = end - start
