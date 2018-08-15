@@ -38,7 +38,7 @@ rnn_size = 512
 embedding_size = 128
 learning_rate = 0.0005
 direction = 2
-threshold = 1.0
+threshold = 0.9
 keep_probability = 1.0
 
 
@@ -74,12 +74,15 @@ def noise_maker(flight, threshold):
                 pass     
         i += 1
 
-    if noisy_flight not in flights:
-        return noisy_flight
-        
-    return noise_maker(flight, threshold)
+    return noisy_flight
 
-
+def ints_to_vocab(ints):
+    
+    int_to_vocab = {}
+    for character, value in vocab_to_int.items():
+        int_to_vocab[value] = character
+    
+    return "".join([int_to_vocab[i] for i in ints if int_to_vocab[i] not in codes])
 
 # # Building the Model
 def model_inputs():
@@ -548,11 +551,19 @@ if __name__ == "__main__":
     # Create a dictionary to convert the vocabulary (characters) to integers
     vocab_to_int = {}
     count = 0
+    '''
     for flight in flights:
         for character in flight:
             if character not in vocab_to_int:
                 vocab_to_int[character] = count
                 count += 1
+    '''
+    for i in range(ord('A'), ord('Z') + 1):
+        vocab_to_int[chr(i)] = count
+        count += 1
+    for i in range(ord('0'), ord('9') + 1):
+        vocab_to_int[chr(i)] = count
+        count += 1
 
     # Add special tokens to vocab_to_int
     codes = ['<PAD>','<EOS>','<GO>']
@@ -578,7 +589,8 @@ if __name__ == "__main__":
         int_flights.append(int_flight)
 
     # Split the data into training and testing sentences
-    training, testing = train_test_split(int_flights, test_size = 0.15, random_state = 2)
+    training, testing = train_test_split(int_flights, test_size = 0.1, random_state = 2)
+    # training = int_flights # Set training set to be 100%
 
 
     # Sort the flihgt no by length to reduce padding, which will allow the model to train faster
@@ -607,8 +619,8 @@ if __name__ == "__main__":
     letters = list(vocab_to_int.keys())[:len(vocab_to_int.keys()) - 3]
 
     # Check to ensure noise_maker is making mistakes correctly.
-    threshold = 0.9
     '''
+    threshold = 0.9
     for flight in training[:5]:
         print(flight)
         print(noise_maker(flight, threshold))
@@ -619,7 +631,7 @@ if __name__ == "__main__":
     with tf.device('/device:GPU:0'):
         for keep_probability in [1.0]:
             for num_layers in [2]:
-                for threshold in [1.0]:
+                for threshold in [0.9]:
                     log_string = 'kp={},nl={},th={}'.format(keep_probability,
                                                             num_layers,
                                                             threshold) 
