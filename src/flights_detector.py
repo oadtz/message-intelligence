@@ -62,6 +62,6 @@ if __name__ == "__main__":
     with open('./masterdata/flights', 'r') as f:
         flights = f.read().splitlines()
     # Create your own sentence or use one from the dataset
-    texts = ['AK874']
+    texts = ['CX874R0']
     for text in texts:
         detect_spell(text)
