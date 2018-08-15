@@ -100,7 +100,7 @@ def main():
     request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
     request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
     request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
-    request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(0.95, shape=[1]))
+    request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(0.99, shape=[1]))
 
     result = stub.Predict(request, 60.0)  # 60 secs timeout
 
