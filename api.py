@@ -12,15 +12,10 @@ from argparse import ArgumentParser
 
 # Communication to TensorFlow server via gRPC
 import grpc
-import tensorflow as tf
-from src import flights_trainer as trainer
-
 # TensorFlow serving stuff to send messages
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
-from tensorflow.contrib.util import make_tensor_proto
-
-from tensorflow.contrib.util import make_tensor_proto
+from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
 
 from os import listdir
 from os.path import isfile, join
@@ -60,6 +55,26 @@ def output_format(output):
 
     return output
 
+def make_tensor_proto_int(data, shape):
+    dims = [tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in shape]
+    tensor_shape_proto = tensor_shape_pb2.TensorShapeProto(dim=dims)
+    tensor_proto = tensor_pb2.TensorProto(
+        dtype=types_pb2.DT_INT32,
+        tensor_shape=tensor_shape_proto,
+        int_val=np.array(data).ravel().tolist())
+    
+    return tensor_proto
+
+def make_tensor_proto_float(data, shape):
+    dims = [tensor_shape_pb2.TensorShapeProto.Dim(size=i) for i in shape]
+    tensor_shape_proto = tensor_shape_pb2.TensorShapeProto(dim=dims)
+    tensor_proto = tensor_pb2.TensorProto(
+        dtype=types_pb2.DT_FLOAT,
+        tensor_shape=tensor_shape_proto,
+        float_val=np.array(data).ravel().tolist())
+    
+    return tensor_proto
+
 def main():
     # parse command line arguments
     server, text = parse_args()
@@ -81,17 +96,17 @@ def main():
     request.model_spec.name = 'flight_spell'
     request.model_spec.signature_name = 'serving_default'
 
-    inputs = [text]*trainer.batch_size
-    inputs_length = [len(text)]*trainer.batch_size
+    inputs = [text]*128
+    inputs_length = [len(text)]*128
     targets_length =[len(text)+1]
     
-    request.inputs['inputs'].CopyFrom(make_tensor_proto(inputs, shape=[trainer.batch_size, len(text)], dtype=tf.int32))
+    request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
     #print('inputs:    [{}]'.format(",".join([str(i) for i in inputs])))
-    request.inputs['inputs_length'].CopyFrom(make_tensor_proto(inputs_length, shape=[trainer.batch_size], dtype=tf.int32))
+    request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
     #print('inputs_length:    [{}]'.format(",".join([str(i) for i in inputs_length)))
-    request.inputs['targets_length'].CopyFrom(make_tensor_proto(targets_length, shape=[len(text) + 1], dtype=tf.int32))
+    request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
     #print('targets_length:    [{}]'.format(",".join([str(i) for i in targets_length])))
-    request.inputs['keep_prob'].CopyFrom(make_tensor_proto(0.999, shape=[1], dtype=tf.float32))
+    request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(0.95, shape=[1]))
 
     result = stub.Predict(request, 60.0)  # 60 secs timeout
 
@@ -100,13 +115,10 @@ def main():
     print ('Output = ')
     for text in result:
         print('\t' + "".join([int_to_vocab[i] for i in text if i not in pad]))
-    #result = tf.make_ndarray(result)
-    #answer_texts = ["".join([int_to_vocab[i] for i in text if i not in pad]) for text in list(result.outputs['outputs'].int_val)]
-    #print(answer_texts)
 
     end = time.time()
     time_diff = end - start
-    print('time elapased: {}'.format(time_diff))
+    #print('time elapased: {}'.format(time_diff))
 
 
 if __name__ == '__main__':
