@@ -91,7 +91,7 @@ def main():
     #print('inputs_length:    [{}]'.format(",".join([str(i) for i in inputs_length)))
     request.inputs['targets_length'].CopyFrom(make_tensor_proto(targets_length, shape=[len(text) + 1], dtype=tf.int32))
     #print('targets_length:    [{}]'.format(",".join([str(i) for i in targets_length])))
-    request.inputs['keep_prob'].CopyFrom(make_tensor_proto(0.95, shape=[1], dtype=tf.float32))
+    request.inputs['keep_prob'].CopyFrom(make_tensor_proto(0.999, shape=[1], dtype=tf.float32))
 
     result = stub.Predict(request, 60.0)  # 60 secs timeout
 
