@@ -17,9 +17,6 @@ from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
 
-from os import listdir
-from os.path import isfile, join
-
 
 def parse_args():
     parser = ArgumentParser(description='Request a TensorFlow server for a prediction on the flight nbr')
@@ -101,11 +98,8 @@ def main():
     targets_length =[len(text)+1]
     
     request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
-    #print('inputs:    [{}]'.format(",".join([str(i) for i in inputs])))
     request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
-    #print('inputs_length:    [{}]'.format(",".join([str(i) for i in inputs_length)))
     request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
-    #print('targets_length:    [{}]'.format(",".join([str(i) for i in targets_length])))
     request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(0.95, shape=[1]))
 
     result = stub.Predict(request, 60.0)  # 60 secs timeout
@@ -118,7 +112,7 @@ def main():
 
     end = time.time()
     time_diff = end - start
-    #print('time elapased: {}'.format(time_diff))
+    print('time elapased: {}'.format(time_diff))
 
 
 if __name__ == '__main__':
