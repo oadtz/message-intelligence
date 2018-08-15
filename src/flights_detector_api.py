@@ -32,7 +32,6 @@ def parse_args():
 
     #host, port = args.server.split(':')
     
-    print('Text = {}'.format(args.text))
     return args.server, args.text
 
 def text_to_ints(text):
@@ -72,43 +71,50 @@ def make_tensor_proto_float(data, shape):
     
     return tensor_proto
 
-def main():
+def predict():
     # parse command line arguments
     server, text = parse_args()
 
+    texts = text.split(',')
+
     channel = grpc.insecure_channel(server)
     stub = prediction_service_pb2_grpc.PredictionServiceStub(channel)
-
-    start = time.time()
-
-    pad = [vocab_to_int["<PAD>"], vocab_to_int["<EOS>"]] 
-    text = text_to_ints(text.upper())
 
     # Create another dictionary to convert integers to their respective characters
     int_to_vocab = {}
     for character, value in vocab_to_int.items():
         int_to_vocab[value] = character
 
+    pad = [vocab_to_int["<PAD>"], vocab_to_int["<EOS>"]] 
+
+    start = time.time()
+
     request = predict_pb2.PredictRequest()
     request.model_spec.name = 'flight_spell'
     request.model_spec.signature_name = 'serving_default'
 
-    inputs = [text]*128
-    inputs_length = [len(text)]*128
-    targets_length =[len(text)+1]
-    
-    request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
-    request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
-    request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
-    request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(0.99, shape=[1]))
+    for text in texts:
+        
+        print('Text = {}'.format(text))
+        text = text_to_ints(text.upper())
 
-    result = stub.Predict(request, 60.0)  # 60 secs timeout
+        inputs = [text]*128
+        inputs_length = [len(text)]*128
+        targets_length =[len(text)+1]
+        
+        request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
+        request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
+        request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
+        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(0.99, shape=[1]))
 
-    result = output_format(result.outputs['outputs'])
+        result = stub.Predict(request, 60.0)  # 60 secs timeout
 
-    print ('Output = ')
-    for text in result:
-        print('\t' + "".join([int_to_vocab[i] for i in text if i not in pad]))
+        result = output_format(result.outputs['outputs'])
+
+        print ('Output = ')
+        for text in result:
+            print('\t' + "".join([int_to_vocab[i] for i in text if i not in pad]))
+        print ('-------------------------------------------')
 
     end = time.time()
     time_diff = end - start
@@ -121,4 +127,4 @@ if __name__ == '__main__':
         vocab_to_int = json.load(f)
         f.close()
 
-    main()
+    predict()
