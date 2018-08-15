@@ -384,11 +384,11 @@ def train(model, epochs, log_string):
 
     with tf.Session() as sess:
     
-        if tf.train.checkpoint_exists("./resources/models/flight_spell.ckpt"):
+        if tf.train.checkpoint_exists("./resources/models/flight_spell/saved_model.ckpt"):
             print('Checkpoint exists')
             #saver = tf.train.import_meta_graph('./resources/models/flight_spell.ckpt.meta', clear_devices=True)
             saver = tf.train.Saver()
-            saver.restore(sess, "./resources/models/flight_spell.ckpt")
+            saver.restore(sess, "./resources/models/flight_spell/saved_model.ckpt")
         else:
             print('Checkpoint does not exist')
             sess.run(tf.global_variables_initializer())
@@ -483,7 +483,7 @@ def train(model, epochs, log_string):
                     if batch_loss_testing <= min(testing_loss_summary):
                         print('New Record!') 
                         stop_early = 0
-                        checkpoint = "./resources/models/flight_spell.ckpt"
+                        checkpoint = "./resources/models/flight_spell/saved_model.ckpt"
                         saver = tf.train.Saver()
                         saver.save(sess, checkpoint)
 
@@ -524,12 +524,12 @@ def freeze_graph(sess):
         method_name= tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
 
 
-    dir_name = "./resources/models/flight_spell/"
+    dir_name = "./resources/models/flight_spell/serve/"
     if os.path.isdir(dir_name):
         shutil.rmtree(dir_name)
     os.makedirs(dir_name)
 
-    builder = tf.saved_model.builder.SavedModelBuilder('./resources/models/flight_spell/1/')
+    builder = tf.saved_model.builder.SavedModelBuilder('./resources/models/flight_spell/serve/1/')
     builder.add_meta_graph_and_variables(sess, [tf.saved_model.tag_constants.SERVING], signature_def_map={
             tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
                 signature_definition
@@ -589,7 +589,7 @@ if __name__ == "__main__":
         int_flights.append(int_flight)
 
     # Split the data into training and testing sentences
-    training, testing = train_test_split(int_flights, test_size = 0.1, random_state = 2)
+    training, testing = train_test_split(int_flights, test_size = 0, random_state = 2)
     # training = int_flights # Set training set to be 100%
 
 
