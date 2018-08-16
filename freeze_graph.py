@@ -1,10 +1,10 @@
 import os, shutil
 import tensorflow as tf
 
-saver = tf.train.import_meta_graph('./resources/models/flight_spell.ckpt.meta', clear_devices=True)
+saver = tf.train.import_meta_graph('./resources/models/flight_spell/saved_model.ckpt.meta', clear_devices=True)
 graph = tf.get_default_graph()
 sess = tf.Session()
-saver.restore(sess, "./resources/models/flight_spell.ckpt")
+saver.restore(sess, "./resources/models/flight_spell/saved_model.ckpt")
 
 
 '''
@@ -180,12 +180,12 @@ signature_definition = tf.saved_model.signature_def_utils.build_signature_def(
     method_name= tf.saved_model.signature_constants.PREDICT_METHOD_NAME)
 
 
-dir_name = "./resources/models/flight_spell/"
+dir_name = "./resources/models/flight_spell/serve/"
 if os.path.isdir(dir_name):
     shutil.rmtree(dir_name)
 os.makedirs(dir_name)
 
-builder = tf.saved_model.builder.SavedModelBuilder('./resources/models/flight_spell/1/')
+builder = tf.saved_model.builder.SavedModelBuilder('./resources/models/flight_spell/serve/1/')
 builder.add_meta_graph_and_variables(sess, [tf.saved_model.tag_constants.SERVING], signature_def_map={
         tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
             signature_definition
