@@ -8,6 +8,8 @@ sdist
 var
 masterdata
 messages
+resources
+web
 logs
 *.pyc
 *.swp
