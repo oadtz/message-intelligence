@@ -564,7 +564,7 @@ if __name__ == "__main__":
     words = []
     if text:
         print('Training for {}'.format(text))
-        words = [text.strip().upper()] * batch_size
+        words = [text.strip().upper()] * 1
     elif file:
         print('Training for file {}'.format(file))
         with open(file) as f:
