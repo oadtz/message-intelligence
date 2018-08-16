@@ -427,7 +427,7 @@ def train(model, epochs, log_string):
                     get_batches(training_sorted, batch_size, threshold)):
                 start_time = time.time()
 
-                print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
+                # print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
                 summary, loss, _ = sess.run([model.merged,
                                              model.cost, 
                                              model.train_op], 

@@ -1,6 +1,7 @@
 import json
 import time
 import numpy as np
+import requests
 
 from argparse import ArgumentParser
 
@@ -25,9 +26,13 @@ def parse_args():
                         dest='text',
                         default='',
                         help='Text to be checked')
+    parser.add_argument('-v', '--debug',
+                        dest='debug',
+                        default=False,
+                        help='Print debug')
     args = parser.parse_args()
     
-    return args.model_name, args.server, args.text
+    return args.model_name, args.server, args.text, bool(args.debug)
 
 def text_to_ints(text):
     '''Prepare the text for the model'''
@@ -96,8 +101,10 @@ def predict():
         #print('inputs_length:    [{}]'.format(",".join(['[' + str(i) + ']' for i in inputs_length])))
         request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
         #print('targets_length:    [{}]'.format(",".join([str(i) for i in targets_length])))
-        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(1, shape=[1]))
+        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(1.0, shape=[1]))
         #print(make_tensor_proto_float(1, shape=[1]))
+
+
 
         result = stub.Predict(request, 60.0)  # 60 secs timeout
 
@@ -105,11 +112,27 @@ def predict():
 
         for text in result:
             print("".join([int_to_vocab[i] for i in text if i not in pad]))
+        
+
+        if debug:
+            payload = json.dumps({
+                "instances": [
+                    {
+                        "inputs": [[i] for i in inputs],
+                        "inputs_length": [inputs_length],
+                        "targets_length": targets_length,
+                        "keep_prob": [1.0]
+                    }
+                ]
+            })
+            print(payload)
+            json_response = requests.post("http://localhost:9001/v1/models/flights:predict", data=payload)
+            print (json.loads(json_response.text))
 
 
 if __name__ == '__main__':
     # parse command line arguments
-    model_name, server, text = parse_args()
+    model_name, server, text, debug = parse_args()
 
     texts = text.split(',')
 
