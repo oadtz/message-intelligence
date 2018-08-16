@@ -91,9 +91,13 @@ def predict():
         targets_length =[len(text)+1]
         
         request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
+        #print('inputs: [{}]'.format(",".join( [  str(i) for i in inputs  ]  )))
         request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
+        #print('inputs_length:    [{}]'.format(",".join(['[' + str(i) + ']' for i in inputs_length])))
         request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
+        #print('targets_length:    [{}]'.format(",".join([str(i) for i in targets_length])))
         request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(1, shape=[1]))
+        #print(make_tensor_proto_float(1, shape=[1]))
 
         result = stub.Predict(request, 60.0)  # 60 secs timeout
 
