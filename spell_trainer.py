@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 # The default parameters
 model_name = ''
 epochs = 100
-batch_size = 128
+batch_size = 1
 num_layers = 2
 rnn_size = 512
 embedding_size = 128
@@ -45,12 +45,15 @@ def parse_args():
                         dest='file')
     parser.add_argument('-t', '--text',
                         dest='text')
+    parser.add_argument('-c', '--check_noisy_exists',
+                        dest='check_noisy_exists',
+                        default=False)
     args = parser.parse_args()
     
-    return args.model_name, int(args.epochs), float(args.keep_probability), float(args.split_ratio), args.directory, args.file, args.text
+    return args.model_name, int(args.epochs), float(args.keep_probability), float(args.split_ratio), bool(args.check_noisy_exists), args.directory, args.file, args.text
 
     
-def noise_maker(word, threshold):
+def noise_maker(word, threshold, check_noisy_exists):
     '''Relocate, remove, or add characters to create spelling mistakes'''
     
     noisy_word = []
@@ -81,6 +84,10 @@ def noise_maker(word, threshold):
             else:
                 pass     
         i += 1
+
+    # Regenerate if word exists
+    if check_noisy_exists and ints_to_vocab(noisy_word).strip().upper() != ints_to_vocab(word).strip().upper() and ints_to_vocab(noisy_word).strip().upper() in words:
+        return noise_maker(word, threshold, check_noisy_exists)
 
     return noisy_word
 
@@ -298,7 +305,7 @@ def get_batches(words, batch_size, threshold):
         
         words_batch_noisy = []
         for word in words_batch:
-            words_batch_noisy.append(noise_maker(word, threshold))
+            words_batch_noisy.append(noise_maker(word, threshold, check_noisy_exists))
 
         words_batch_eos = []
         for word in words_batch:
@@ -429,7 +436,8 @@ def train(model, epochs, log_string):
                 #print('Batch {}'.format(batch_i))
                 #print('Input {}'.format(input_batch))
                 #print('Target {}'.format(target_batch))
-                #print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
+                if len(words)//batch_size <= 1:
+                    print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
                 summary, loss, _ = sess.run([model.merged,
                                              model.cost, 
                                              model.train_op], 
@@ -560,7 +568,7 @@ def freeze_graph(sess, graph):
 
 if __name__ == "__main__":
     # Get vars from arguments
-    model_name, epochs, keep_probability, split_ratio, directory, file, text = parse_args()
+    model_name, epochs, keep_probability, split_ratio, check_noisy_exists, directory, file, text = parse_args()
 
     # Get words
     words = []

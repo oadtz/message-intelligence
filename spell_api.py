@@ -85,13 +85,14 @@ def predict(model, texts, prob):
     answers = []
     for text in texts:
         text = [vocab_to_int[word] for word in text]
+        batch_size = 1
 
-        inputs = [text]*128
-        inputs_length = [len(text)]*128
+        inputs = [text]*batch_size
+        inputs_length = [len(text)]*batch_size
         targets_length =[len(text)+1]
         
-        request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
-        request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
+        request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[batch_size, len(text)]))
+        request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[batch_size]))
         request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
         request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(prob, shape=[1]))
 

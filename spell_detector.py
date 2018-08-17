@@ -24,13 +24,17 @@ def parse_args():
                         dest='text',
                         default='',
                         help='Text to be checked')
+    parser.add_argument('-p', '--prob',
+                        dest='prob',
+                        default='1',
+                        help='Probability')
     parser.add_argument('-v', '--debug',
                         dest='debug',
                         default=False,
                         help='Print debug')
     args = parser.parse_args()
     
-    return args.model_name, args.server, args.text, bool(args.debug)
+    return args.model_name, args.server, args.text, float(args.prob), bool(args.debug)
 
 def text_to_ints(text):
     '''Prepare the text for the model'''
@@ -86,15 +90,16 @@ def predict():
 
     for text in texts:
         text = text_to_ints(text.upper())
+        batch_size = 1
 
-        inputs = [text]*128
-        inputs_length = [len(text)]*128
+        inputs = [text]*batch_size
+        inputs_length = [len(text)]*batch_size
         targets_length =[len(text)+1]
         
-        request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
-        request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
+        request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[batch_size, len(text)]))
+        request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[batch_size]))
         request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
-        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(1.0, shape=[1]))
+        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(prob, shape=[1]))
 
 
 
@@ -113,7 +118,7 @@ def predict():
                         "inputs": np.array(inputs).ravel().tolist(),
                         "inputs_length": np.array(inputs_length).ravel().tolist(),
                         "targets_length": np.array(targets_length).ravel().tolist(),
-                        "keep_prob": np.array(1.0).ravel().tolist()
+                        "keep_prob": np.array(prob).ravel().tolist()
                     }
                 ]
             })
@@ -122,7 +127,7 @@ def predict():
 
 if __name__ == '__main__':
     # parse command line arguments
-    model_name, server, text, debug = parse_args()
+    model_name, server, text, prob, debug = parse_args()
 
     texts = text.split(',')
 
