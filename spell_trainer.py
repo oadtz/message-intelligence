@@ -292,7 +292,6 @@ def pad_word_batch(word_batch):
 def get_batches(words, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
-    
     for batch_i in range(0, len(words)//batch_size):
         start_i = batch_i * batch_size
         words_batch = words[start_i:start_i + batch_size]
@@ -427,7 +426,10 @@ def train(model, epochs, log_string):
                     get_batches(training_sorted, batch_size, threshold)):
                 start_time = time.time()
 
-                # print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
+                #print('Batch {}'.format(batch_i))
+                #print('Input {}'.format(input_batch))
+                #print('Target {}'.format(target_batch))
+                #print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
                 summary, loss, _ = sess.run([model.merged,
                                              model.cost, 
                                              model.train_op], 
@@ -564,14 +566,18 @@ if __name__ == "__main__":
     words = []
     if text:
         print('Training for {}'.format(text))
-        words = [text.strip().upper()] * 1
+        #batch_size = 1
+        words = [text.strip().upper()] * batch_size
     elif file:
         print('Training for file {}'.format(file))
         with open(file) as f:
             words = [text.strip().upper() for text in f.read().splitlines()]
     elif directory:
-        print ('Getting from dir is not supported yet!')
-        exit()
+        print('Training for dir {}'.format(directory))
+        files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        for file in files:
+            with open(file, 'r') as f:
+                words.append(f.read())
     else:
         print ('Missing input source')
         exit()
@@ -579,8 +585,11 @@ if __name__ == "__main__":
     print("There are {} words.".format(len(words)))
 
     # Create a dictionary to convert the vocabulary (characters) to integers
-    vocab_to_int = {}
-    count = 0
+    vocab_to_int = {
+        '\n': 0,
+        '\r': 1
+    }
+    count = 2
     for i in range(32, 127):
         vocab_to_int[chr(i)] = count
         count += 1
@@ -610,7 +619,7 @@ if __name__ == "__main__":
     for word in words:
         int_word = []
         for character in word:
-            int_word.append(vocab_to_int[character])
+            int_word.append(vocab_to_int[character] if character in vocab_to_int.keys() else vocab_to_int['?'])
         int_words.append(int_word)
 
     # Split the data into training and testing sentences
@@ -620,7 +629,7 @@ if __name__ == "__main__":
     training_sorted = []
     testing_sorted = []
 
-    for i in range(1, 12):
+    for i in range(1, len(max(words, key=len)) + 1):
         for word in training:
             if len(word) == i:
                 training_sorted.append(word)

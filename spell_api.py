@@ -1,44 +1,21 @@
 import json
 import numpy as np
-
-from argparse import ArgumentParser
-
 # Communication to TensorFlow server via gRPC
 import grpc
 # TensorFlow serving stuff to send messages
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
+from flask import Flask
+from flask import request
+from flask import jsonify
 
+HOST = 'localhost:9000'
 
-def parse_args():
-    parser = ArgumentParser(description='Request a TensorFlow server for a spell prediction on the text')
-    parser.add_argument('-m', '--model_name',
-                        dest='model_name',
-                        required=True)
-    parser.add_argument('-s', '--server',
-                        dest='server',
-                        default='localhost:9000',
-                        help='Prediction service host:port')
-    parser.add_argument('-t', '--text',
-                        dest='text',
-                        default='',
-                        help='Text to be checked')
-    parser.add_argument('-v', '--debug',
-                        dest='debug',
-                        default=False,
-                        help='Print debug')
-    args = parser.parse_args()
-    
-    return args.model_name, args.server, args.text, bool(args.debug)
+app = Flask(__name__)
 
-def text_to_ints(text):
-    '''Prepare the text for the model'''
-    
-    text = [vocab_to_int[word] for word in text]
-    text.append(vocab_to_int['<EOS>'])
-
-    return text
+def convert_data(raw_data):
+    return np.array(raw_data, dtype=np.float32)
 
 def output_format(output):
 
@@ -69,23 +46,45 @@ def make_tensor_proto_float(data, shape):
     
     return tensor_proto
 
-def predict():
-    channel = grpc.insecure_channel(server)
+@app.route("/flights", methods=['GET'])
+def get_prediction():
+    req_data = request.args
+    text = req_data['text']
+    prob = req_data['prob']
+
+    texts = text.split(',')
+    prob = float(prob) if prob else 1
+
+    prediction = flights_predict(texts, prob)
+
+    return jsonify(prediction)
+
+def flights_predict(texts, prob):
+    return predict('flights', texts, prob)
+    
+def predict(model, texts, prob):
+    channel = grpc.insecure_channel(HOST)
     stub = prediction_service_pb2_grpc.PredictionServiceStub(channel)
+    
+    vocab_to_int = {}
+    with open('./resources/models/{}/vocabs.json'.format(model)) as f:
+        vocab_to_int = json.load(f)
+        f.close()
 
     # Create another dictionary to convert integers to their respective characters
     int_to_vocab = {}
     for character, value in vocab_to_int.items():
         int_to_vocab[value] = character
 
-    pad = [vocab_to_int["<PAD>"], vocab_to_int["<EOS>"]]
+    pad = [vocab_to_int["<PAD>"], vocab_to_int["<EOS>"]] 
 
     request = predict_pb2.PredictRequest()
-    request.model_spec.name = model_name
+    request.model_spec.name = model
     request.model_spec.signature_name = 'serving_default'
 
+    answers = []
     for text in texts:
-        text = text_to_ints(text.upper())
+        text = [vocab_to_int[word] for word in text]
 
         inputs = [text]*128
         inputs_length = [len(text)]*128
@@ -94,8 +93,7 @@ def predict():
         request.inputs['inputs'].CopyFrom(make_tensor_proto_int(inputs, shape=[128, len(text)]))
         request.inputs['inputs_length'].CopyFrom(make_tensor_proto_int(inputs_length, shape=[128]))
         request.inputs['targets_length'].CopyFrom(make_tensor_proto_int(targets_length, shape=[len(text) + 1]))
-        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(1.0, shape=[1]))
-
+        request.inputs['keep_prob'].CopyFrom(make_tensor_proto_float(prob, shape=[1]))
 
 
         result = stub.Predict(request, 60.0)  # 60 secs timeout
@@ -103,32 +101,9 @@ def predict():
         result = output_format(result.outputs['outputs'])
 
         for text in result:
-            print("".join([int_to_vocab[i] for i in text if i not in pad]))
+            answers.append("".join([int_to_vocab[i] for i in text if i not in pad]))
+    
+    return answers
         
-
-        if debug:
-            payload = json.dumps({
-                "instances": [
-                    {
-                        "inputs": np.array(inputs).ravel().tolist(),
-                        "inputs_length": np.array(inputs_length).ravel().tolist(),
-                        "targets_length": np.array(targets_length).ravel().tolist(),
-                        "keep_prob": np.array(1.0).ravel().tolist()
-                    }
-                ]
-            })
-            print(payload)
-
-
 if __name__ == '__main__':
-    # parse command line arguments
-    model_name, server, text, debug = parse_args()
-
-    texts = text.split(',')
-
-    vocab_to_int = []
-    with open('./resources/models/{}/vocabs.json'.format(model_name)) as f:
-        vocab_to_int = json.load(f)
-        f.close()
-
-    predict()
+    app.run(host='0.0.0.0',port=9001)
