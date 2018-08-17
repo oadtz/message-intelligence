@@ -575,7 +575,7 @@ if __name__ == "__main__":
     if text:
         print('Training for {}'.format(text))
         #batch_size = 1
-        words = [text.strip().upper()] * batch_size
+        words = [t.strip().upper() for t in text.split(',')] * batch_size
     elif file:
         print('Training for file {}'.format(file))
         with open(file) as f:
