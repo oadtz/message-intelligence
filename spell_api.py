@@ -85,7 +85,7 @@ def predict(model, texts, prob):
     answers = []
     for text in texts:
         text = [vocab_to_int[word] for word in text]
-        batch_size = 1
+        batch_size = 128
 
         inputs = [text]*batch_size
         inputs_length = [len(text)]*batch_size

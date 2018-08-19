@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 # The default parameters
 model_name = ''
 epochs = 100
-batch_size = 1
+batch_size = 128
 num_layers = 2
 rnn_size = 512
 embedding_size = 128
@@ -397,13 +397,13 @@ def train(model, epochs, log_string):
 
     with tf.Session() as sess:
     
+        sess.run(tf.global_variables_initializer())
         if tf.train.checkpoint_exists("./resources/models/{}/saved_model.ckpt".format(model_name)):
             print('Checkpoint exists')
             saver = tf.train.Saver()
             saver.restore(sess, "./resources/models/{}/saved_model.ckpt".format(model_name))
         else:
             print('Checkpoint does not exist')
-            sess.run(tf.global_variables_initializer())
         
         graph = tf.get_default_graph()
 
@@ -436,8 +436,7 @@ def train(model, epochs, log_string):
                 #print('Batch {}'.format(batch_i))
                 #print('Input {}'.format(input_batch))
                 #print('Target {}'.format(target_batch))
-                if len(words)//batch_size <= 1:
-                    print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
+                #print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
                 summary, loss, _ = sess.run([model.merged,
                                              model.cost, 
                                              model.train_op], 
@@ -469,7 +468,7 @@ def train(model, epochs, log_string):
                     batch_time = 0
                     
                 #### Testing ####
-                if batch_i % testing_check == 0 and batch_i > 0:
+                if testing_check > 0 and batch_i % testing_check == 0 and batch_i > 0:
                     batch_loss_testing = 0
                     batch_time_testing = 0
                     for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(

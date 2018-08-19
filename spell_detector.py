@@ -90,7 +90,7 @@ def predict():
 
     for text in texts:
         text = text_to_ints(text.upper())
-        batch_size = 1
+        batch_size = 128
 
         inputs = [text]*batch_size
         inputs_length = [len(text)]*batch_size
