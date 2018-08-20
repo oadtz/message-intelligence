@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 import os
 
-base_path = './masterdata'
+base_path = os.path.join(os.path.dirname(__file__), '../masterdata')
 
 mongo = MongoClient()
 db = mongo.planb_prod_main
@@ -63,13 +63,7 @@ with open(os.path.join(base_path, 'flights_changes.csv'), 'w') as f:
 
 
 with open(os.path.join(base_path, 'flights'), 'w') as f:
-    flights = []
-    for flight in db.flights.find({}):
-        if len(flight['fullFlightNbr']) > 3:
-            flights.append(flight['carrierCode'] + ' ' + str(flight['flightNbr']))
-
-    #flights = set(flights)
-    for flight in flights:
-        f.write(flight + '\n')
-    
+    for flight in db.flights.find({}).distinct('fullFlightNbr'):
+        if len(flight) > 3:
+            f.write(flight + '\n')
     f.close()
