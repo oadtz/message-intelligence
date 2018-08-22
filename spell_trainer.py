@@ -299,7 +299,8 @@ def pad_word_batch(word_batch):
 def get_batches(words, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
-    for batch_i in range(0, len(words)//batch_size):
+    n = int(np.ceil(len(words)//batch_size))
+    for batch_i in range(0, n):
         start_i = batch_i * batch_size
         words_batch = words[start_i:start_i + batch_size]
         
@@ -397,28 +398,15 @@ def train(model, epochs, log_string):
 
     with tf.Session() as sess:
     
-        saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
-        
-        graph = tf.get_default_graph()
-
+        saver = tf.train.Saver()
         if tf.train.checkpoint_exists("./resources/models/{}/saved_model.ckpt".format(model_name)):
             print('Checkpoint exists')
-
-            from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
-            print_tensors_in_checkpoint_file("./resources/models/{}/saved_model.ckpt".format(model_name), all_tensors=True, tensor_name = '', all_tensor_names=True)
-            exit()
-
-            saver = tf.train.import_meta_graph("./resources/models/{}/saved_model.ckpt.meta".format(model_name))
-
-            cost = graph.get_tensor_by_name('cost/cost:0')
-            merged = graph.get_tensor_by_name('merged:0')
-
-
             saver.restore(sess, "./resources/models/{}/saved_model.ckpt".format(model_name))
-            exit()
         else:
             print('Checkpoint does not exist')
+        
+        graph = tf.get_default_graph()
 
         # Used to determine when to stop the training early
         testing_loss_summary = []
@@ -587,7 +575,7 @@ if __name__ == "__main__":
     if text:
         print('Training for {}'.format(text))
         #batch_size = 1
-        words = [t.strip().upper() for t in text.split(',')] * batch_size
+        words = [t.strip().upper() for t in text.split(',')] * 127
     elif file:
         print('Training for file {}'.format(file))
         with open(file) as f:
@@ -678,4 +666,3 @@ if __name__ == "__main__":
                     model = build_graph(k, rnn_size, num_layers, batch_size, 
                                         learning_rate, embedding_size, direction, vocab_to_int)
                     train(model, epochs, log_string)
-
