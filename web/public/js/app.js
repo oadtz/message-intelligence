@@ -1009,7 +1009,7 @@ var app = new __WEBPACK_IMPORTED_MODULE_1_vue___default.a({
                 axios.get('/api/flights', {
                     params: {
                         text: v.question,
-                        prob: 0.75
+                        prob: 0.99
                     }
                 }).then(function (response) {
                     v.answers = response.data;

@@ -397,10 +397,22 @@ def train(model, epochs, log_string):
 
     with tf.Session() as sess:
     
+        saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
         if tf.train.checkpoint_exists("./resources/models/{}/saved_model.ckpt".format(model_name)):
             print('Checkpoint exists')
-            saver = tf.train.Saver()
+            #saver = tf.train.import_meta_graph("./resources/models/{}/saved_model.ckpt.meta".format(model_name))
+
+            #print(tf.get_default_graph().get_all_collection_keys())
+            #for v in tf.get_default_graph().get_collection("variables"):
+            #    print(v)
+            #for v in tf.get_default_graph().get_collection("trainable_variables"):
+            #    print(v)
+            #for v in [x for x in tf.get_default_graph().get_operations() if 'cost' in x.name]:
+            #    print (v)
+            #exit()
+
+
             saver.restore(sess, "./resources/models/{}/saved_model.ckpt".format(model_name))
         else:
             print('Checkpoint does not exist')
@@ -502,7 +514,7 @@ def train(model, epochs, log_string):
                         print('New Record!') 
                         stop_early = 0
                         checkpoint = "./resources/models/{}/saved_model.ckpt".format(model_name)
-                        saver = tf.train.Saver()
+                        #saver = tf.train.Saver()
                         saver.save(sess, checkpoint)
 
                     else:
@@ -516,7 +528,7 @@ def train(model, epochs, log_string):
                 break
             
             checkpoint = "./resources/models/{}/saved_model.ckpt".format(model_name)
-            saver = tf.train.Saver()
+            #saver = tf.train.Saver()
             saver.save(sess, checkpoint)
 
         freeze_graph(sess, graph)
