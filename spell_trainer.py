@@ -399,25 +399,26 @@ def train(model, epochs, log_string):
     
         saver = tf.train.Saver()
         sess.run(tf.global_variables_initializer())
+        
+        graph = tf.get_default_graph()
+
         if tf.train.checkpoint_exists("./resources/models/{}/saved_model.ckpt".format(model_name)):
             print('Checkpoint exists')
-            #saver = tf.train.import_meta_graph("./resources/models/{}/saved_model.ckpt.meta".format(model_name))
 
-            #print(tf.get_default_graph().get_all_collection_keys())
-            #for v in tf.get_default_graph().get_collection("variables"):
-            #    print(v)
-            #for v in tf.get_default_graph().get_collection("trainable_variables"):
-            #    print(v)
-            #for v in [x for x in tf.get_default_graph().get_operations() if 'cost' in x.name]:
-            #    print (v)
-            #exit()
+            from tensorflow.python.tools.inspect_checkpoint import print_tensors_in_checkpoint_file
+            print_tensors_in_checkpoint_file("./resources/models/{}/saved_model.ckpt".format(model_name), all_tensors=True, tensor_name = '', all_tensor_names=True)
+            exit()
+
+            saver = tf.train.import_meta_graph("./resources/models/{}/saved_model.ckpt.meta".format(model_name))
+
+            cost = graph.get_tensor_by_name('cost/cost:0')
+            merged = graph.get_tensor_by_name('merged:0')
 
 
             saver.restore(sess, "./resources/models/{}/saved_model.ckpt".format(model_name))
+            exit()
         else:
             print('Checkpoint does not exist')
-        
-        graph = tf.get_default_graph()
 
         # Used to determine when to stop the training early
         testing_loss_summary = []
