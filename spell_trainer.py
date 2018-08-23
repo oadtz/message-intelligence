@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 import os, shutil
 from argparse import ArgumentParser
@@ -43,14 +44,20 @@ def parse_args():
                         dest='directory')
     parser.add_argument('-f', '--file',
                         dest='file')
+    parser.add_argument('-fc', '--file_correct_col',
+                        dest='file_correct_col')
+    parser.add_argument('-fe', '--file_error_col',
+                        dest='file_error_col')
     parser.add_argument('-t', '--text',
                         dest='text')
+    parser.add_argument('-te', '--text_error',
+                        dest='text_error')
     parser.add_argument('-c', '--check_noisy_exists',
                         dest='check_noisy_exists',
                         default=False)
     args = parser.parse_args()
     
-    return args.model_name, int(args.epochs), float(args.keep_probability), float(args.split_ratio), bool(args.check_noisy_exists), args.directory, args.file, args.text
+    return args.model_name, int(args.epochs), float(args.keep_probability), float(args.split_ratio), bool(args.check_noisy_exists), args.directory, args.file, args.file_correct_col, args.file_error_col, args.text, args.text_error
 
     
 def noise_maker(word, threshold, check_noisy_exists):
@@ -90,6 +97,13 @@ def noise_maker(word, threshold, check_noisy_exists):
         return noise_maker(word, threshold, check_noisy_exists)
 
     return noisy_word
+
+def vocab_to_ints(word):
+    int_word = []
+    for character in word:
+        int_word.append(vocab_to_int[character] if character in vocab_to_int.keys() else vocab_to_int['?'])
+    
+    return int_word
 
 def ints_to_vocab(ints):
     int_to_vocab = {}
@@ -299,13 +313,14 @@ def pad_word_batch(word_batch):
 def get_batches(words, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
-    n = int(np.ceil(len(words)//batch_size))
-    for batch_i in range(0, n):
+    n = int(np.ceil(len(words)/batch_size))
+    for batch_i in range(0, len(words)//batch_size):
         start_i = batch_i * batch_size
         words_batch = words[start_i:start_i + batch_size]
         
         words_batch_noisy = []
         for word in words_batch:
+            word =  vocab_to_ints(error_words[ints_to_vocab(word)] if ints_to_vocab(word) in error_words.keys() else ints_to_vocab(word))
             words_batch_noisy.append(noise_maker(word, threshold, check_noisy_exists))
 
         words_batch_eos = []
@@ -568,24 +583,34 @@ def freeze_graph(sess, graph):
 
 if __name__ == "__main__":
     # Get vars from arguments
-    model_name, epochs, keep_probability, split_ratio, check_noisy_exists, directory, file, text = parse_args()
+    model_name, epochs, keep_probability, split_ratio, check_noisy_exists, directory, file, file_correct_col, file_error_col, text, text_error = parse_args()
 
     # Get words
     words = []
+    error_words = {}
     if text:
         print('Training for {}'.format(text))
         #batch_size = 1
-        words = [t.strip().upper() for t in text.split(',')] * 127
+        words = [t.strip().upper() for t in text.split(',')] * batch_size
+        if text_error:
+            error_words = dict(zip([t.strip().upper() for t in text.split(',')], [t.strip().upper() for t in text_error.split(',')]))
     elif file:
         print('Training for file {}'.format(file))
-        with open(file) as f:
-            words = [text.strip().upper() for text in f.read().splitlines()]
+        if file_correct_col and file_error_col:
+            f = pd.read_csv(file)
+            words = [text.strip().upper() for text in f[file_correct_col].tolist()]
+            error_words = { row[file_correct_col]:row[file_error_col] for i, row in f.iterrows() }
+        else:
+            with open(file) as f:
+                words = [text.strip().upper() for text in f.read().splitlines()]
+                f.close()
     elif directory:
         print('Training for dir {}'.format(directory))
         files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
         for file in files:
             with open(file, 'r') as f:
                 words.append(f.read())
+                f.close()
     else:
         print ('Missing input source')
         exit()
@@ -625,10 +650,7 @@ if __name__ == "__main__":
     int_words = []
 
     for word in words:
-        int_word = []
-        for character in word:
-            int_word.append(vocab_to_int[character] if character in vocab_to_int.keys() else vocab_to_int['?'])
-        int_words.append(int_word)
+        int_words.append(vocab_to_ints(word))
 
     # Split the data into training and testing sentences
     training, testing = train_test_split(int_words, test_size = split_ratio, random_state = 2)

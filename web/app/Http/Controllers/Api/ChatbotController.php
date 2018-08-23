@@ -33,8 +33,16 @@ class ChatbotController extends Controller {
 
         $this->chatbot->hears('Check ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
             $answers = $this->checkFlights($flightNbr);
-            
-            $bot->reply('We found flight(s): <br/>'.implode('<br/>', $answers));
+
+            if (in_array($flightNbr, $answers)) {
+                $bot->reply('<h3 style="color: green">Hooray!</h3> We\'ve found your flight: <br/>' . $flightNbr);
+                $answers = array_diff($answers, [$flightNbr]);
+                if (count($answers) > 0) {
+                    $bot->reply('We also found: <br/>'.implode('<br/>', $answers));
+                }
+            } else {
+                $bot->reply('<h3 style="color: red">Oops!</h3> We have not your flight. But we found: <br/>'.implode('<br/>', $answers));
+            }
         });
         
         $this->chatbot->hears('Add ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
@@ -57,7 +65,7 @@ class ChatbotController extends Controller {
     public function checkFlights($flightNbr) {
 
         $text = $flightNbr;
-        $prob = 0.99;
+        $prob = 0.95;
 
         $answers = [];
 
