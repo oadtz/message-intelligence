@@ -314,7 +314,6 @@ def get_batches(words, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
     n = int(np.ceil(len(words)/batch_size))
-    words = words + words[0 : batch_size - (len(words)%batch_size)]
     for batch_i in range(0, n):
         start_i = batch_i * batch_size
         words_batch = words[start_i:start_i + batch_size]
@@ -655,6 +654,7 @@ if __name__ == "__main__":
 
     # Split the data into training and testing sentences
     training, testing = train_test_split(int_words, test_size = split_ratio, random_state = 2)
+    training = training + training[0 : batch_size - (len(training)%batch_size)]
 
     # Sort the flihgt no by length to reduce padding, which will allow the model to train faster
     training_sorted = []

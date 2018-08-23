@@ -9,14 +9,14 @@ use App\Jobs\AddFlight;
 use BotMan\BotMan\BotMan;
 use BotMan\BotMan\BotManFactory;
 use BotMan\BotMan\Drivers\DriverManager;
-
+use BotMan\BotMan\Cache\RedisCache;
 
 class ChatbotController extends Controller {
 
     public function __construct() {
         DriverManager::loadDriver(\BotMan\Drivers\Web\WebDriver::class);
 
-        $this->chatbot = BotManFactory::create([]);
+        $this->chatbot = BotManFactory::create([], new RedisCache('127.0.0.1', 6379));
 
         $this->client = new \GuzzleHttp\Client();
     }
