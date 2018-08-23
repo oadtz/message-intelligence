@@ -6,6 +6,8 @@
     "type": "project",
     "require": {
         "php": ">=7.0.0",
+        "botman/botman": "^2.4",
+        "botman/driver-web": "^1.5",
         "fideloper/proxy": "~3.3",
         "guzzlehttp/guzzle": "^6.3",
         "laravel/framework": "5.5.*",

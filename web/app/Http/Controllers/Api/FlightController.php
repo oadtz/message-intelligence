@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Jobs\AddFlight;
 
-class ApiFlightController extends Controller {
+class FlightController extends Controller {
 
     public function __construct() {
         $this->client = new \GuzzleHttp\Client();

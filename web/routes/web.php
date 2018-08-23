@@ -2,10 +2,11 @@
 
 
 Route::prefix('api')->group(function () {
-    Route::get('flights', 'ApiFlightController@getFlights');
-    Route::post('flights', 'ApiFlightController@addFlight');
+    Route::get('flights', 'Api\FlightController@getFlights');
+    Route::post('flights', 'Api\FlightController@addFlight');
+    Route::any('chatbot', 'Api\ChatbotController@chat');
 });
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/flights', 'FlightController@index');
+Route::get('/chatbot', 'SiteController@chatbot');
+Route::get('/', 'SiteController@index');
