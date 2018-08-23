@@ -314,7 +314,8 @@ def get_batches(words, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
     n = int(np.ceil(len(words)/batch_size))
-    for batch_i in range(0, len(words)//batch_size):
+    words = words + words[0 : batch_size - (len(words)%batch_size)]
+    for batch_i in range(0, n):
         start_i = batch_i * batch_size
         words_batch = words[start_i:start_i + batch_size]
         
