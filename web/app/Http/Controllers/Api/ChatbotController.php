@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\QuestionConversation;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Jobs\AddFlight;
@@ -21,23 +22,29 @@ class ChatbotController extends Controller {
     }
 
     public function chat() {
-        $that = $this;
-
         $this->chatbot->hears('.*(Hi|Hello).*', function (BotMan $bot) {
             $bot->reply('Hello there!');
             $bot->reply('You can start checking flight number from our ML model. Start by type: check&nbsp;<i>Flight No.</i>');
         });
 
-        $this->chatbot->hears('Check ([0-9A-Za-z]+)', function ($bot, $flightNbr) use($that) {
-            $answers = $that->checkFlights($flightNbr);
+        $this->chatbot->hears('.*(Bye|Good Bye|See you).*', function (BotMan $bot) {
+            $bot->reply('Bye');
+        });
+
+        $this->chatbot->hears('Check ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
+            $answers = $this->checkFlights($flightNbr);
             
             $bot->reply('We found flight(s): <br/>'.implode('<br/>', $answers));
         });
         
-        $this->chatbot->hears('Add ([0-9A-Za-z]+)', function ($bot, $flightNbr) use($that) {
-            $that->addFlight($flightNbr);
+        $this->chatbot->hears('Add ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
+            $this->addFlight($flightNbr);
             
             $bot->reply('We will add ' . $flightNbr . ' to our database. Thanks for your suggestion.');
+        });
+
+        $this->chatbot->hears('Delete', function ($bot) {
+            $bot->startConversation(new QuestionConversation);
         });
         
         $this->chatbot->fallback(function($bot) {
