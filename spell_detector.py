@@ -1,3 +1,4 @@
+import os
 import json
 import numpy as np
 
@@ -9,6 +10,11 @@ import grpc
 from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
+
+HOST = os.getenv('TENSORFLOW_MODEL_SERVER')
+BATCH_SIZE = int(os.getenv('BATCH_SIZE'))
 
 
 def parse_args():
@@ -18,7 +24,7 @@ def parse_args():
                         required=True)
     parser.add_argument('-s', '--server',
                         dest='server',
-                        default='localhost:9000',
+                        default=HOST,
                         help='Prediction service host:port')
     parser.add_argument('-t', '--text',
                         dest='text',
@@ -90,7 +96,7 @@ def predict():
 
     for text in texts:
         text = text_to_ints(text.upper())
-        batch_size = 128
+        batch_size = BATCH_SIZE
 
         inputs = [text]*batch_size
         inputs_length = [len(text)]*batch_size

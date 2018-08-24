@@ -12,11 +12,13 @@ import time
 import re
 import json
 from sklearn.model_selection import train_test_split
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 
 # The default parameters
 model_name = ''
 epochs = 100
-batch_size = 128
+batch_size = int(os.getenv('BATCH_SIZE'))
 num_layers = 2
 rnn_size = 512
 embedding_size = 128
@@ -320,7 +322,7 @@ def get_batches(words, batch_size, threshold):
         
         words_batch_noisy = []
         for word in words_batch:
-            word =  vocab_to_ints(error_words[ints_to_vocab(word)] if ints_to_vocab(word) in error_words.keys() else ints_to_vocab(word))
+            word =  vocab_to_ints(error_words[ints_to_vocab(word)]) if ints_to_vocab(word) in error_words.keys() else word
             words_batch_noisy.append(noise_maker(word, threshold, check_noisy_exists))
 
         words_batch_eos = []
@@ -591,7 +593,7 @@ if __name__ == "__main__":
     if text:
         print('Training for {}'.format(text))
         #batch_size = 1
-        words = [t.strip().upper() for t in text.split(',')] * batch_size
+        words = [t.strip().upper() for t in text.split(',')]
         if text_error:
             error_words = dict(zip([t.strip().upper() for t in text.split(',')], [t.strip().upper() for t in text_error.split(',')]))
     elif file:
@@ -654,7 +656,11 @@ if __name__ == "__main__":
 
     # Split the data into training and testing sentences
     training, testing = train_test_split(int_words, test_size = split_ratio, random_state = 2)
-    training = training + training[0 : batch_size - (len(training)%batch_size)]
+    #training = training + training[0 : batch_size - (len(training)%batch_size)]
+    #training = training + ([[vocab_to_int['<EOS>']] * len(max(training, key=len))] * (batch_size - (len(training)%batch_size)))
+    n_batch = int(np.ceil(len(training) / batch_size))
+    training = training + training * (batch_size // len(training))
+    training = training[0: (n_batch * batch_size)]
 
     # Sort the flihgt no by length to reduce padding, which will allow the model to train faster
     training_sorted = []

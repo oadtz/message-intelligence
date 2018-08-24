@@ -10,6 +10,7 @@ use BotMan\BotMan\BotMan;
 use BotMan\BotMan\BotManFactory;
 use BotMan\BotMan\Drivers\DriverManager;
 use BotMan\BotMan\Cache\RedisCache;
+use BotMan\BotMan\Middleware\ApiAi;
 
 class ChatbotController extends Controller {
 
@@ -31,8 +32,22 @@ class ChatbotController extends Controller {
             $bot->reply('Bye');
         });
 
+        $this->chatbot->hears('Do you know ([0-9A-Za-z]+)\?', function ($bot, $name) {
+            $answers = $this->checkApi('names', $name);
+
+            if (in_array($name, $answers)) {
+                $bot->reply('<h3 style="color: green">Yes!</h3> I know ' . $name);
+                $answers = array_diff($answers, [$name]);
+                if (count($answers) > 0) {
+                    $bot->reply('I also know '.implode(', ', $answers));
+                }
+            } else {
+                $bot->reply('<h3 style="color: red">Sorry!</h3> I don\'t know any '. $name .'. But I know '.implode(', ', $answers));
+            }
+        });
+
         $this->chatbot->hears('Check ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
-            $answers = $this->checkFlights($flightNbr);
+            $answers = $this->checkApi('flights', $flightNbr);
 
             if (in_array($flightNbr, $answers)) {
                 $bot->reply('<h3 style="color: green">Hooray!</h3> We\'ve found your flight: <br/>' . $flightNbr);
@@ -62,17 +77,17 @@ class ChatbotController extends Controller {
         $this->chatbot->listen();
     }
 
-    public function checkFlights($flightNbr) {
+    public function checkApi($model, $text) {
 
-        $text = $flightNbr;
-        $prob = 0.95;
+        $text = strtoupper($text);
+        $prob = 0.97;
 
         $answers = [];
 
         try {
             $data = compact('text', 'prob');
 
-            $response = $this->client->request('GET', config('app.model_api_url') . '/flights', [ 'query' => $data ]);
+            $response = $this->client->request('GET', config('app.model_api_url') . '/' . $model, [ 'query' => $data ]);
 
             $answers = json_decode($response->getBody()->getContents());
         } catch (\Exception $e) {

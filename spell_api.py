@@ -1,3 +1,4 @@
+import os
 import json
 import numpy as np
 # Communication to TensorFlow server via gRPC
@@ -9,8 +10,11 @@ from tensorflow.core.framework import tensor_pb2, tensor_shape_pb2, types_pb2
 from flask import Flask
 from flask import request
 from flask import jsonify
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 
-HOST = 'localhost:9000'
+HOST = os.getenv('TENSORFLOW_MODEL_SERVER')
+BATCH_SIZE = int(os.getenv('BATCH_SIZE'))
 
 app = Flask(__name__)
 
@@ -47,7 +51,7 @@ def make_tensor_proto_float(data, shape):
     return tensor_proto
 
 @app.route("/flights", methods=['GET'])
-def get_prediction():
+def get_flights_prediction():
     req_data = request.args
     text = req_data['text']
     prob = req_data['prob']
@@ -55,12 +59,23 @@ def get_prediction():
     texts = text.split(',')
     prob = float(prob) if prob else 1
 
-    prediction = flights_predict(texts, prob)
+    prediction = predict('flights', texts, prob)
 
     return jsonify(prediction)
 
-def flights_predict(texts, prob):
-    return predict('flights', texts, prob)
+
+@app.route("/names", methods=['GET'])
+def get_names_prediction():
+    req_data = request.args
+    text = req_data['text']
+    prob = req_data['prob']
+
+    texts = text.split(',')
+    prob = float(prob) if prob else 1
+
+    prediction = predict('names', texts, prob)
+
+    return jsonify(prediction)
     
 def predict(model, texts, prob):
     channel = grpc.insecure_channel(HOST)
@@ -85,7 +100,7 @@ def predict(model, texts, prob):
     answers = []
     for text in texts:
         text = [vocab_to_int[word] for word in text]
-        batch_size = 128
+        batch_size = BATCH_SIZE
 
         inputs = [text]*batch_size
         inputs_length = [len(text)]*batch_size
