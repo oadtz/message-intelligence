@@ -315,7 +315,8 @@ def pad_word_batch(word_batch):
 def get_batches(words, batch_size, threshold):
     """Batch sentences, noisy sentences, and the lengths of their sentences together.
        With each epoch, sentences will receive new mistakes"""
-    n = int(np.ceil(len(words)/batch_size))
+    #n = int(np.ceil(len(words)/batch_size))
+    n = len(words)//batch_size
     for batch_i in range(0, n):
         start_i = batch_i * batch_size
         words_batch = words[start_i:start_i + batch_size]
@@ -593,7 +594,7 @@ if __name__ == "__main__":
     if text:
         print('Training for {}'.format(text))
         #batch_size = 1
-        words = [t.strip().upper() for t in text.split(',')]
+        words = [t.strip().upper() for t in text.split(',')] * batch_size
         if text_error:
             error_words = dict(zip([t.strip().upper() for t in text.split(',')], [t.strip().upper() for t in text_error.split(',')]))
     elif file:
@@ -656,11 +657,9 @@ if __name__ == "__main__":
 
     # Split the data into training and testing sentences
     training, testing = train_test_split(int_words, test_size = split_ratio, random_state = 2)
-    #training = training + training[0 : batch_size - (len(training)%batch_size)]
-    #training = training + ([[vocab_to_int['<EOS>']] * len(max(training, key=len))] * (batch_size - (len(training)%batch_size)))
-    n_batch = int(np.ceil(len(training) / batch_size))
-    training = training + training * (batch_size//len(training) + 1) 
-    training = training[0: (n_batch * batch_size)]
+    #n_batch = int(np.ceil(len(training) / batch_size))
+    #training = training + training * (batch_size//len(training) + 1) 
+    #training = training[0: (n_batch * batch_size)]
 
     # Sort the flihgt no by length to reduce padding, which will allow the model to train faster
     training_sorted = []
