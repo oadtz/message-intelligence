@@ -659,7 +659,7 @@ if __name__ == "__main__":
     #training = training + training[0 : batch_size - (len(training)%batch_size)]
     #training = training + ([[vocab_to_int['<EOS>']] * len(max(training, key=len))] * (batch_size - (len(training)%batch_size)))
     n_batch = int(np.ceil(len(training) / batch_size))
-    training = training + training * (batch_size // len(training))
+    training = training + training * (batch_size//len(training) + 1) 
     training = training[0: (n_batch * batch_size)]
 
     # Sort the flihgt no by length to reduce padding, which will allow the model to train faster
