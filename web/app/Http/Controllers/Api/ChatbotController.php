@@ -25,7 +25,7 @@ class ChatbotController extends Controller {
     public function chat() {
         $this->chatbot->hears('.*(Hi|Hello).*', function (BotMan $bot) {
             $bot->reply('Hello there!');
-            $bot->reply('You can start checking flight number from our ML model. Start by type: check&nbsp;<i>Flight No.</i>');
+            $bot->reply('You can start checking flight number from our ML model. Start by type: Flight&nbsp;<i>Flight No.</i>');
         });
 
         $this->chatbot->hears('.*(Bye|Good Bye|See you).*', function (BotMan $bot) {
@@ -46,7 +46,7 @@ class ChatbotController extends Controller {
             }
         });
 
-        $this->chatbot->hears('Check ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
+        $this->chatbot->hears('Flight ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
             $answers = $this->checkApi('flights', $flightNbr);
 
             if (in_array($flightNbr, $answers)) {
@@ -60,10 +60,16 @@ class ChatbotController extends Controller {
             }
         });
         
-        $this->chatbot->hears('Add ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
+        $this->chatbot->hears('Add Flight ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
             $this->addFlight($flightNbr);
             
-            $bot->reply('We will add ' . $flightNbr . ' to our database. Thanks for your suggestion.');
+            $bot->reply('We will add flight ' . $flightNbr . ' to our database. Thanks for your suggestion.');
+        });
+
+        $this->chatbot->hears('Message (.+)', function ($bot, $message) {
+            $answers = $this->checkApi('messages', $message, 'POST', 1.0);
+
+            $bot->reply(nl2br($answers[0]));
         });
 
         $this->chatbot->hears('Delete', function ($bot) {
@@ -71,23 +77,26 @@ class ChatbotController extends Controller {
         });
         
         $this->chatbot->fallback(function($bot) {
-            $bot->reply('Sorry, I did not understand that. Here is a list of commands I understand: <ul><li>Check&nbsp;<i>Flight No.</li><li>Add&nbsp;<i>Flight No.</li></ul>');
+            $bot->reply('Sorry, I did not understand that. Here is a list of commands I understand: <ul><li>Flight&nbsp;<i>Flight No.</li><li>Add Flight&nbsp;<i>Flight No.</li></ul>');
         });
 
         $this->chatbot->listen();
     }
 
-    public function checkApi($model, $text) {
+    public function checkApi($model, $text, $method = 'GET', $prob = 0.97) {
 
         $text = strtoupper($text);
-        $prob = 0.97;
 
         $answers = [];
 
         try {
             $data = compact('text', 'prob');
 
-            $response = $this->client->request('GET', config('app.model_api_url') . '/' . $model, [ 'query' => $data ]);
+            if ($method == 'POST') {
+                $response = $this->client->request('POST', config('app.model_api_url') . '/' . $model, [ 'form_params' => $data ]);
+            } else {
+                $response = $this->client->request('GET', config('app.model_api_url') . '/' . $model, [ 'query' => $data ]);
+            }
 
             $answers = json_decode($response->getBody()->getContents());
         } catch (\Exception $e) {

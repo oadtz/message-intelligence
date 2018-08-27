@@ -76,6 +76,20 @@ def get_names_prediction():
     prediction = predict('names', texts, prob)
 
     return jsonify(prediction)
+
+
+@app.route("/messages", methods=['POST'])
+def get_messages_prediction():
+    req_data = request.form
+    text = req_data['text']
+    prob = req_data['prob']
+
+    texts = text.split(',')
+    prob = float(prob) if prob else 1
+
+    prediction = predict('messages', texts, prob)
+
+    return jsonify(prediction)
     
 def predict(model, texts, prob):
     channel = grpc.insecure_channel(HOST)

@@ -27,6 +27,7 @@ direction = 2
 threshold = 0.9
 keep_probability = 1.0
 split_ratio = 0
+files = None
 
 def parse_args():
     parser = ArgumentParser(description='Train the spell correction engine')
@@ -103,6 +104,9 @@ def noise_maker(word, threshold, check_noisy_exists):
 def vocab_to_ints(word):
     int_word = []
     for character in word:
+        if character == '\n':
+            character = '<BR>'
+            
         int_word.append(vocab_to_int[character] if character in vocab_to_int.keys() else vocab_to_int['?'])
     
     return int_word
@@ -319,42 +323,45 @@ def get_batches(words, batch_size, threshold):
     n = len(words)//batch_size
     for batch_i in range(0, n):
         start_i = batch_i * batch_size
-        words_batch = words[start_i:start_i + batch_size]
+
+        if files:
+            print('Reading words from file for batch {}'.format(batch_i))
+            words_batch = [
+                vocab_to_ints(open(ints_to_vocab(f)).read()) for f in words[start_i:start_i + batch_size]
+            ]
+        else:
+            words_batch = words[start_i:start_i + batch_size]
         
         words_batch_noisy = []
         for word in words_batch:
-            word =  vocab_to_ints(error_words[ints_to_vocab(word)]) if ints_to_vocab(word) in error_words.keys() else word
+            vocab_word = ints_to_vocab(word)
+            word =  vocab_to_ints(error_words[vocab_word]) if vocab_word in error_words.keys() else word
             words_batch_noisy.append(noise_maker(word, threshold, check_noisy_exists))
 
-        words_batch_eos = []
-        for word in words_batch:
-            word.append(vocab_to_int['<EOS>'])
-            words_batch_eos.append(word)
+        #words_batch_eos = []
+        #for word in words_batch:
+        #    word.append(vocab_to_int['<EOS>'])
+        #   words_batch_eos.append(word)
+        words_batch_eos = [ word + [vocab_to_int['<EOS>']] for word in words_batch ]
             
         pad_words_batch = np.array(pad_word_batch(words_batch_eos))
         pad_words_noisy_batch = np.array(pad_word_batch(words_batch_noisy))
         
-        # Need the lengths for the _lengths parameters
-        pad_words_lengths = []
-        for word in pad_words_batch:
-            pad_words_lengths.append(len(word))
-        
-        pad_words_noisy_lengths = []
-        for word in pad_words_noisy_batch:
-            pad_words_noisy_lengths.append(len(word))
-
-
-        yield pad_words_noisy_batch, pad_words_batch, pad_words_noisy_lengths, pad_words_lengths
+        words_batch = None
+        words_batch_eos = None
+        words_batch_noisy = None
+        yield pad_words_noisy_batch, pad_words_batch, [ len(word) for word in pad_words_noisy_batch ], [ len(word) for word in pad_words_batch ]
 
 
 # *Note: This set of values achieved the best results.*
 
 
-def build_graph(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_size, direction, vocab_to_int):
+def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_size, direction, vocab_to_int):
     tf.reset_default_graph()
     
     # Load the model inputs    
     inputs, targets, keep_prob, inputs_length, targets_length, max_target_length = model_inputs()
+
 
     # Create the training and inference logits
     training_logits, inference_logits = seq2seq_model(tf.reverse(inputs, [-1]),
@@ -404,18 +411,10 @@ def build_graph(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embe
                     'predictions', 'merged', 'train_op','optimizer']
     Graph = namedtuple('Graph', export_nodes)
     local_dict = locals()
-    graph = Graph(*[local_dict[each] for each in export_nodes])
-
-    return graph
-
-
-# ## Training the Model
-def train(model, epochs, log_string):
-    '''Train the RNN'''
-
+    model = Graph(*[local_dict[each] for each in export_nodes])
 
     with tf.Session() as sess:
-    
+
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
         if tf.train.checkpoint_exists("./resources/models/{}/saved_model.ckpt".format(model_name)):
@@ -441,8 +440,8 @@ def train(model, epochs, log_string):
         print()
         print("Training Model: {}".format(log_string))
 
-        train_writer = tf.summary.FileWriter('./logs/1/train/{}'.format(log_string), sess.graph)
-        test_writer = tf.summary.FileWriter('./logs/1/test/{}'.format(log_string))
+        #train_writer = tf.summary.FileWriter('./logs/1/train/{}'.format(log_string), sess.graph)
+        #test_writer = tf.summary.FileWriter('./logs/1/test/{}'.format(log_string))
 
         for epoch_i in range(1, epochs+1): 
             batch_loss = 0
@@ -452,18 +451,15 @@ def train(model, epochs, log_string):
                     get_batches(training_sorted, batch_size, threshold)):
                 start_time = time.time()
 
-                #print('Batch {}'.format(batch_i))
-                #print('Input {}'.format(input_batch))
-                #print('Target {}'.format(target_batch))
-                #print('Start training for epoch_i = {} batch = {}'.format(epoch_i, batch_i))
-                summary, loss, _ = sess.run([model.merged,
-                                             model.cost, 
-                                             model.train_op], 
-                                             {model.inputs: input_batch,
-                                              model.targets: target_batch,
-                                              model.inputs_length: input_length,
-                                              model.targets_length: target_length,
-                                              model.keep_prob: keep_probability})
+                #summary, loss, _ = sess.run([model.merged,
+                #                             model.cost, 
+                #                             model.train_op], 
+                #                             {model.inputs: input_batch,
+                #                              model.targets: target_batch,
+                #                              model.inputs_length: input_length,
+                #                              model.targets_length: target_length,
+                #                              model.keep_prob: keep_probability})
+                loss = 0
 
 
                 batch_loss += loss
@@ -471,7 +467,7 @@ def train(model, epochs, log_string):
                 batch_time += end_time - start_time
 
                 # Record the progress of training
-                train_writer.add_summary(summary, iteration)
+                #train_writer.add_summary(summary, iteration)
 
                 iteration += 1
 
@@ -485,6 +481,11 @@ def train(model, epochs, log_string):
                                   batch_time))
                     batch_loss = 0
                     batch_time = 0
+                
+                input_batch = None
+                target_batch = None
+                input_length = None
+                target_length = None
                     
                 #### Testing ####
                 if testing_check > 0 and batch_i % testing_check == 0 and batch_i > 0:
@@ -493,20 +494,22 @@ def train(model, epochs, log_string):
                     for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(
                             get_batches(testing_sorted, batch_size, threshold)):
                         start_time_testing = time.time()
-                        summary, loss = sess.run([model.merged,
-                                                  model.cost], 
-                                                     {model.inputs: input_batch,
-                                                      model.targets: target_batch,
-                                                      model.inputs_length: input_length,
-                                                      model.targets_length: target_length,
-                                                      model.keep_prob: 1})
+                        #summary, loss = sess.run([model.merged,
+                        #                          model.cost], 
+                        #                             {model.inputs: input_batch,
+                        #                              model.targets: target_batch,
+                        #                              model.inputs_length: input_length,
+                        #                              model.targets_length: target_length,
+                        #
+                        #                              model.keep_prob: 1})
+                        loss = 0
 
                         batch_loss_testing += loss
                         end_time_testing = time.time()
                         batch_time_testing += end_time_testing - start_time_testing
 
                         # Record the progress of testing
-                        test_writer.add_summary(summary, iteration)
+                        #test_writer.add_summary(summary, iteration)
 
                     n_batches_testing = batch_i + 1
                     print('Testing Loss: {:>6.3f}, Seconds: {:>4.2f}'
@@ -588,6 +591,33 @@ if __name__ == "__main__":
     # Get vars from arguments
     model_name, epochs, keep_probability, split_ratio, check_noisy_exists, directory, file, file_correct_col, file_error_col, text, text_error = parse_args()
 
+
+    # Create a dictionary to convert the vocabulary (characters) to integers
+    vocab_to_int = {}
+    count = 0
+    for i in range(32, 127):
+        vocab_to_int[chr(i)] = count
+        count += 1
+
+    # Add special tokens to vocab_to_int
+    codes = ['<PAD>','<EOS>','<GO>', '<BR>']
+    for code in codes:
+        vocab_to_int[code] = count
+        count += 1
+    
+    model_dir = './resources/models/{}'.format(model_name)
+
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir)
+    with open(os.path.join(model_dir, 'vocabs.json'), 'w') as f:
+        json.dump(vocab_to_int, f)
+        f.close()
+
+    # Check the size of vocabulary and all of the values
+    vocab_size = len(vocab_to_int)
+    #print("The vocabulary contains {} characters.".format(vocab_size))
+    #print(sorted(vocab_to_int))
+
     # Get words
     words = []
     error_words = {}
@@ -609,45 +639,13 @@ if __name__ == "__main__":
                 f.close()
     elif directory:
         print('Training for dir {}'.format(directory))
-        files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-        for file in files:
-            with open(file, 'r') as f:
-                words.append(f.read())
-                f.close()
+        words = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+        files = True
     else:
         print ('Missing input source')
         exit()
 
     print("There are {} words.".format(len(words)))
-
-    # Create a dictionary to convert the vocabulary (characters) to integers
-    vocab_to_int = {
-        '\n': 0,
-        '\r': 1
-    }
-    count = 2
-    for i in range(32, 127):
-        vocab_to_int[chr(i)] = count
-        count += 1
-
-    # Add special tokens to vocab_to_int
-    codes = ['<PAD>','<EOS>','<GO>']
-    for code in codes:
-        vocab_to_int[code] = count
-        count += 1
-    
-    model_dir = './resources/models/{}'.format(model_name)
-
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir)
-    with open(os.path.join(model_dir, 'vocabs.json'), 'w') as f:
-        json.dump(vocab_to_int, f)
-        f.close()
-
-    # Check the size of vocabulary and all of the values
-    vocab_size = len(vocab_to_int)
-    print("The vocabulary contains {} characters.".format(vocab_size))
-    print(sorted(vocab_to_int))
 
     # Convert ULDs to integers
     int_words = []
@@ -675,13 +673,13 @@ if __name__ == "__main__":
 
     print("Number of training words:", len(training_sorted))
     #print("Number of testing words:", len(testing_sorted))
-
+    
     # Check to ensure the sentences have been selected and sorted correctly
     #for i in range(5):
     #    print(training_sorted[i], len(training_sorted[i]))
 
 
-    letters = list(vocab_to_int.keys())[:len(vocab_to_int.keys()) - 3]
+    letters = list(vocab_to_int.keys())[:len(vocab_to_int.keys()) - 4]
 
     # Train the model with the desired tuning parameters
     with tf.device('/device:GPU:0'):
@@ -691,6 +689,5 @@ if __name__ == "__main__":
                     log_string = 'kp={},nl={},th={}'.format(k,
                                                             num_layers,
                                                             threshold) 
-                    model = build_graph(k, rnn_size, num_layers, batch_size, 
+                    train(k, rnn_size, num_layers, batch_size, 
                                         learning_rate, embedding_size, direction, vocab_to_int)
-                    train(model, epochs, log_string)
