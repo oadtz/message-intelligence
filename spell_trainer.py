@@ -365,18 +365,18 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
 
     # Create the training and inference logits
     training_logits, inference_logits = seq2seq_model(tf.reverse(inputs, [-1]),
-                                                      targets, 
-                                                      keep_prob,   
-                                                      inputs_length,
-                                                      targets_length,
-                                                      max_target_length,
-                                                      len(vocab_to_int)+1,
-                                                      rnn_size, 
-                                                      num_layers, 
-                                                      vocab_to_int,
-                                                      batch_size,
-                                                      embedding_size,
-                                                      direction)
+                                                    targets, 
+                                                    keep_prob,   
+                                                    inputs_length,
+                                                    targets_length,
+                                                    max_target_length,
+                                                    len(vocab_to_int)+1,
+                                                    rnn_size, 
+                                                    num_layers, 
+                                                    vocab_to_int,
+                                                    batch_size,
+                                                    embedding_size,
+                                                    direction)
 
     # Create tensors for the training logits and inference logits
     training_logits = tf.identity(training_logits.rnn_output, 'logits')
@@ -403,15 +403,6 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
         capped_gradients = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gradients if grad is not None]
         train_op = optimizer.apply_gradients(capped_gradients)
 
-    # Merge all of the summaries
-    merged = tf.summary.merge_all()    
-
-    # Export the nodes 
-    export_nodes = ['inputs', 'targets', 'keep_prob', 'cost', 'inputs_length', 'targets_length',
-                    'predictions', 'merged', 'train_op','optimizer']
-    Graph = namedtuple('Graph', export_nodes)
-    local_dict = locals()
-    model = Graph(*[local_dict[each] for each in export_nodes])
 
     with tf.Session() as sess:
 
@@ -446,21 +437,31 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
         for epoch_i in range(1, epochs+1): 
             batch_loss = 0
             batch_time = 0
-            
+                    
+
+
+            # Merge all of the summaries
+            merged = tf.summary.merge_all()    
+
+            # Export the nodes 
+            export_nodes = ['inputs', 'targets', 'keep_prob', 'cost', 'inputs_length', 'targets_length',
+                            'predictions', 'merged', 'train_op','optimizer']
+            Graph = namedtuple('Graph', export_nodes)
+            local_dict = locals()
+            model = Graph(*[local_dict[each] for each in export_nodes])
+
             for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(
                     get_batches(training_sorted, batch_size, threshold)):
                 start_time = time.time()
 
-                #summary, loss, _ = sess.run([model.merged,
-                #                             model.cost, 
-                #                             model.train_op], 
-                #                             {model.inputs: input_batch,
-                #                              model.targets: target_batch,
-                #                              model.inputs_length: input_length,
-                #                              model.targets_length: target_length,
-                #                              model.keep_prob: keep_probability})
-                loss = 0
-
+                summary, loss, _ = sess.run([model.merged,
+                                             model.cost, 
+                                             model.train_op], 
+                                             {model.inputs: input_batch,
+                                              model.targets: target_batch,
+                                              model.inputs_length: input_length,
+                                              model.targets_length: target_length,
+                                              model.keep_prob: keep_probability})
 
                 batch_loss += loss
                 end_time = time.time()
@@ -494,15 +495,14 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
                     for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(
                             get_batches(testing_sorted, batch_size, threshold)):
                         start_time_testing = time.time()
-                        #summary, loss = sess.run([model.merged,
-                        #                          model.cost], 
-                        #                             {model.inputs: input_batch,
-                        #                              model.targets: target_batch,
-                        #                              model.inputs_length: input_length,
-                        #                              model.targets_length: target_length,
-                        #
-                        #                              model.keep_prob: 1})
-                        loss = 0
+                        summary, loss = sess.run([model.merged,
+                                                  model.cost], 
+                                                     {model.inputs: input_batch,
+                                                      model.targets: target_batch,
+                                                      model.inputs_length: input_length,
+                                                      model.targets_length: target_length,
+                        
+                                                      model.keep_prob: 1})
 
                         batch_loss_testing += loss
                         end_time_testing = time.time()
