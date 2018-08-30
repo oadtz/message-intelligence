@@ -11,6 +11,8 @@ from tensorflow.python.ops.rnn_cell_impl import _zero_state_tensors
 import time
 import re
 import json
+import gc
+import sys
 from sklearn.model_selection import train_test_split
 from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
@@ -402,6 +404,16 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
         gradients = optimizer.compute_gradients(cost)
         capped_gradients = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in gradients if grad is not None]
         train_op = optimizer.apply_gradients(capped_gradients)
+        
+    # Merge all of the summaries
+    merged = tf.summary.merge_all()    
+
+    # Export the nodes 
+    export_nodes = ['inputs', 'targets', 'keep_prob', 'cost', 'inputs_length', 'targets_length',
+                    'predictions', 'merged', 'train_op','optimizer']
+    Graph = namedtuple('Graph', export_nodes)
+    local_dict = locals()
+    model = Graph(*[local_dict[each] for each in export_nodes])
 
 
     with tf.Session() as sess:
@@ -437,23 +449,12 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
         for epoch_i in range(1, epochs+1): 
             batch_loss = 0
             batch_time = 0
-                    
-
-
-            # Merge all of the summaries
-            merged = tf.summary.merge_all()    
-
-            # Export the nodes 
-            export_nodes = ['inputs', 'targets', 'keep_prob', 'cost', 'inputs_length', 'targets_length',
-                            'predictions', 'merged', 'train_op','optimizer']
-            Graph = namedtuple('Graph', export_nodes)
-            local_dict = locals()
-            model = Graph(*[local_dict[each] for each in export_nodes])
 
             for batch_i, (input_batch, target_batch, input_length, target_length) in enumerate(
                     get_batches(training_sorted, batch_size, threshold)):
                 start_time = time.time()
 
+                print('Train sess.run starting')
                 summary, loss, _ = sess.run([model.merged,
                                              model.cost, 
                                              model.train_op], 
@@ -462,6 +463,8 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
                                               model.inputs_length: input_length,
                                               model.targets_length: target_length,
                                               model.keep_prob: keep_probability})
+                print('Train sess.run finished')
+                print('Summary size {}'.format(sys.getsizeof(summary)))
 
                 batch_loss += loss
                 end_time = time.time()
@@ -541,6 +544,7 @@ def train(keep_prob, rnn_size, num_layers, batch_size, learning_rate, embedding_
             #saver = tf.train.Saver()
             saver.save(sess, checkpoint)
 
+            gc.collect()
         freeze_graph(sess, graph)
 
 
