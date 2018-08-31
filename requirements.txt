@@ -1,2 +1,6 @@
-gensim
+numpy
+pandas
+grpcio
 tensorflow
+tensorflow-serving-api
+python-dotenv

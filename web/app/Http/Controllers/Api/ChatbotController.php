@@ -17,7 +17,7 @@ class ChatbotController extends Controller {
     public function __construct() {
         DriverManager::loadDriver(\BotMan\Drivers\Web\WebDriver::class);
 
-        $this->chatbot = BotManFactory::create([], new RedisCache('127.0.0.1', 6379));
+        $this->chatbot = BotManFactory::create([], new RedisCache('redis', 6379));
 
         $this->client = new \GuzzleHttp\Client();
     }
