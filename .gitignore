@@ -6,10 +6,10 @@ lib64
 parts
 sdist
 var
-masterdata
-messages
-resources
-logs
+/masterdata
+/messages
+/resources
+/logs
 *.pyc
 *.swp
 .DS_Store
