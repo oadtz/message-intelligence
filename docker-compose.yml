@@ -1,39 +1,46 @@
 version: '2'
 
+networks:
+  mynetwork:
+    driver: bridge
+
 services:
   nginx:
     image: nginx:latest
     ports:
-      - 80:80
+      - "80:80"
     volumes:
       - .:/var/www/message-intelligence/
       - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-    links:
-      - php
+    networks:
+      - mynetwork
 
   php:
     build: ./docker/php
     volumes:
       - .:/var/www/message-intelligence/
-    links:
-      - redis
-      - tf-api
+    networks:
+      - mynetwork
   
   redis:
     image: redis:latest
+    networks:
+      - mynetwork
 
   tf-server:
     image: bitnami/tensorflow-serving:latest
     volumes:
       - .:/var/www/message-intelligence/
       - ./docker/tf-server/tensorflow-serving.conf:/bitnami/tensorflow-serving/conf/tensorflow-serving.conf
+    networks:
+      - mynetwork
 
   tf-api:
     build: ./docker/tf-api
     volumes:
       - .:/var/www/message-intelligence/
     command: bash -c "cd /var/www/message-intelligence/ && python spell_api.py"
-    links:
-      - tf-server
+    networks:
+      - mynetwork
 
 
