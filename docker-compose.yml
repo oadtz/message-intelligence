@@ -21,6 +21,12 @@ services:
       - .:/var/www/message-intelligence/
     networks:
       - mynetwork
+
+  log:
+    build: ./docker/php
+    volumes:
+      - .:/var/www/message-intelligence/
+    command: ['tail', '-f', '/var/www/message-intelligence/web/storage/logs/laravel.log']
   
   redis:
     image: redis:latest
@@ -42,5 +48,11 @@ services:
     command: bash -c "cd /var/www/message-intelligence/ && python spell_api.py"
     networks:
       - mynetwork
+  
+  webpack:
+    image: node:7
+    volumes:
+      - .:/var/www/message-intelligence/
+    command: bash -c "cd /var/www/message-intelligence/web && npm install && npm run watch"
 
 

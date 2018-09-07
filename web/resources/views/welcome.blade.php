@@ -74,14 +74,18 @@
 
                 <div class="links">
                     <a href="Javascript: botmanChatWidget.open()">Open Chatbot</a>
+                    <!--
+                        
                     |
                     <a href="{{url('flights')}}">Flight Checker</a>
+
+                    -->
                 </div>
             </div>
         </div>
         <script>
         var botmanWidget = {
-            introMessage: '<img src="https://planb.unilode.com/assets/images/unilode_logo.svg"/><h4>Welcome to message intelligence</h4> Start by type: check&nbsp;<i>Flight No.</i>',
+            introMessage: '<img src="https://planb.unilode.com/assets/images/unilode_logo.svg"/><h4>Welcome to message intelligence</h4></i>',
             title: 'Unilode Chatbot',
             chatServer: '{{url('api/chatbot')}}',
             frameEndpoint: '{{url('chatbot')}}',

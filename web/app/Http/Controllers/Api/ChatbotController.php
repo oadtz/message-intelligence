@@ -11,8 +11,12 @@ use BotMan\BotMan\BotManFactory;
 use BotMan\BotMan\Drivers\DriverManager;
 use BotMan\BotMan\Cache\RedisCache;
 use BotMan\BotMan\Middleware\ApiAi;
+use BotMan\BotMan\Messages\Outgoing\Question;
+use BotMan\BotMan\Messages\Incoming\Answer;
+use BotMan\BotMan\Messages\Outgoing\Actions\Button;
 
 class ChatbotController extends Controller {
+    protected $models = ['flights', 'names', 'messages'];
 
     public function __construct() {
         DriverManager::loadDriver(\BotMan\Drivers\Web\WebDriver::class);
@@ -23,64 +27,96 @@ class ChatbotController extends Controller {
     }
 
     public function chat() {
-        $this->chatbot->hears('.*(Hi|Hello).*', function (BotMan $bot) {
-            $bot->reply('Hello there!');
-            $bot->reply('You can start checking flight number from our ML model. Start by type: Flight&nbsp;<i>Flight No.</i>');
-        });
+        $this->chatbot->hears('.*(Hi|Hello).*', 'App\Http\Controllers\Api\ChatbotController@handleGreeting');
 
-        $this->chatbot->hears('.*(Bye|Good Bye|See you).*', function (BotMan $bot) {
-            $bot->reply('Bye');
-        });
+        $this->chatbot->hears('.*(Bye|Good Bye|See you later|Talk to you later).*', 'App\Http\Controllers\Api\ChatbotController@handleBye');
 
-        $this->chatbot->hears('Do you know ([0-9A-Za-z]+)\?', function ($bot, $name) {
-            $answers = $this->checkApi('names', $name);
+        $this->chatbot->hears('(List|List command|List commands)', 'App\Http\Controllers\Api\ChatbotController@handleListCommands');
 
-            if (in_array($name, $answers)) {
-                $bot->reply('<h3 style="color: green">Yes!</h3> I know ' . $name);
-                $answers = array_diff($answers, [$name]);
-                if (count($answers) > 0) {
-                    $bot->reply('I also know '.implode(', ', $answers));
-                }
-            } else {
-                $bot->reply('<h3 style="color: red">Sorry!</h3> I don\'t know any '. $name .'. But I know '.implode(', ', $answers));
-            }
-        });
-
-        $this->chatbot->hears('Flight ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
-            $answers = $this->checkApi('flights', $flightNbr);
-
-            if (in_array($flightNbr, $answers)) {
-                $bot->reply('<h3 style="color: green">Hooray!</h3> We\'ve found your flight: <br/>' . $flightNbr);
-                $answers = array_diff($answers, [$flightNbr]);
-                if (count($answers) > 0) {
-                    $bot->reply('We also found: <br/>'.implode('<br/>', $answers));
-                }
-            } else {
-                $bot->reply('<h3 style="color: red">Oops!</h3> We have not your flight. But we found: <br/>'.implode('<br/>', $answers));
-            }
-        });
-        
-        $this->chatbot->hears('Add Flight ([0-9A-Za-z]+)', function ($bot, $flightNbr) {
-            $this->addFlight($flightNbr);
-            
-            $bot->reply('We will add flight ' . $flightNbr . ' to our database. Thanks for your suggestion.');
-        });
-
-        $this->chatbot->hears('Message (.+)', function ($bot, $message) {
-            $answers = $this->checkApi('messages', $message, 'POST', 1.0);
-
-            $bot->reply(nl2br($answers[0]));
-        });
-
-        $this->chatbot->hears('Delete', function ($bot) {
-            $bot->startConversation(new QuestionConversation);
-        });
+        $this->chatbot->hears('Check {text}', 'App\Http\Controllers\Api\ChatbotController@handleCheckText');
         
         $this->chatbot->fallback(function($bot) {
-            $bot->reply('Sorry, I did not understand that. Here is a list of commands I understand: <ul><li>Flight&nbsp;<i>Flight No.</li><li>Add Flight&nbsp;<i>Flight No.</li></ul>');
+            $bot->reply('Sorry, I did not understand that.');
         });
 
         $this->chatbot->listen();
+    }
+
+    public function handleGreeting(Botman $bot) {
+        $bot->reply('Hello there!');
+        //$bot->reply('You can start checking flight number from our ML model. Start by type: Flight&nbsp;<i>Flight No.</i>');
+    }
+
+    public function handleBye(Botman $bot) {
+        $bot->reply('Bye');
+    }
+
+    public function handleListCommands (Botman $bot) {
+        $commands = '<ul>';
+
+        foreach ($this->models as $m) {
+            $commands .= '<li>Check ' . str_singular($m) .  '&nbsp;<i>{' . str_singular($m) . '}</i>' . '</li>';
+        }
+
+        $commands .= '</ul>';
+
+        $bot->reply($commands);
+    }
+
+    public function handleCheckText (Botman $bot, $text) {
+        $token = explode(' ', $text);
+
+        if (count($token) > 1) {
+            $model = str_plural($token[0]);
+            $text = strtoupper($token[1]);
+        } else {
+            $model = null;
+            $text = strtoupper($token[0]);
+        }
+        
+        if (!$model || !in_array($model, $this->models)) {
+            $bot->reply('I am not sure what to do with "' . $text . '".');
+            $this->selectCommand($bot, $text);
+        } else {
+            $bot->reply($this->checkText($model, $text));
+        }
+    }
+
+    public function checkText ($model, $text) {
+        $reply = '';
+        $answers = $this->checkApi($model, $text);
+
+        if (in_array($text, $answers)) {
+            $reply .= '<h3 style="color: green">Hooray!</h3> We\'ve found your ' . str_singular($model) . ': <br/>' . $text . '<br/>';
+            $answers = array_diff($answers, [$text]);
+            if (count($answers) > 0) {
+                $reply .= 'We also found: <br/>'.implode('<br/>', $answers);
+            }
+        } else {
+            $reply .= '<h3 style="color: red">Oops!</h3> Your search not found in ' . str_singular($model) . '. But we found: <br/>'.implode('<br/>', $answers);
+        }
+        
+        return $reply;
+    }
+
+    public function selectCommand ($bot, $text) {
+        $commands = array_map(function ($model) use ($text) {
+            return Button::create('Check ' . str_singular($model) . ' ' . $text)->value($model);
+        }, $this->models);
+
+        $question = Question::create('Select what to check')->addButtons($commands);
+
+        $that = $this;
+        $bot->ask($question, function (Answer $answer) use ($that, $text) {
+            if ($answer->isInteractiveMessageReply()) {
+                $model = $answer->getValue();
+                
+                //$this->say('OK, ' . $answer->getText());
+                $this->say($that->checkText($model, $text));
+            } else {
+                $this->say('Please select from above actions');
+            }
+        });
     }
 
     public function checkApi($model, $text, $method = 'GET', $prob = 0.97) {
